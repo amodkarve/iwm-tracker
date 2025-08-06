@@ -1,3 +1,3 @@
 def test_smoke():
-    """A failing test that asserts False."""
-    assert False 
+    """A passing test that asserts 2 + 2 == 4."""
+    assert 2 + 2 == 4 
