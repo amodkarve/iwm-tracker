@@ -57,17 +57,7 @@ class Database:
         if self.db_path != ":memory:":
             # For file-based databases, create tables immediately
             conn = self._get_connection()
-            cursor = conn.cursor()
-            
-            # Check if we need to migrate existing database
-            cursor.execute("PRAGMA table_info(trades)")
-            columns = [column[1] for column in cursor.fetchall()]
-            
-            # If old schema (missing new columns), recreate table
-            if 'expiration_date' not in columns:
-                cursor.execute("DROP TABLE IF EXISTS trades")
-                self._create_tables(cursor)
-            
+            self._create_tables(conn.cursor())
             conn.commit()
             conn.close()
     
