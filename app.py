@@ -106,42 +106,47 @@ def main():
 
         # Trade form
         with st.form("add_trade_form"):
-            symbol = st.text_input("Symbol", placeholder="AAPL")
+            # Compact layout with columns
+            col1, col2 = st.columns(2)
 
-            # Trade type selection
-            trade_type = st.selectbox(
-                "Trade Type", ["stock", "put", "call"], help="Select the type of trade"
-            )
+            with col1:
+                symbol = st.text_input("Symbol", placeholder="AAPL")
+                trade_type = st.selectbox(
+                    "Type", ["stock", "put", "call"], help="Trade type"
+                )
+                quantity = st.number_input("Qty", min_value=1, value=1)
 
-            side = st.selectbox("Side", ["buy", "sell"])
-            quantity = st.number_input("Quantity", min_value=1, value=1)
-            price = st.number_input("Price", min_value=0.01, value=150.0, step=0.01)
+            with col2:
+                side = st.selectbox("Side", ["buy", "sell"])
+                price = st.number_input("Price", min_value=0.01, value=150.0, step=0.01)
+                strategy = st.text_input("Strategy", placeholder="wheel")
 
-            # Option-specific fields
-            expiration_date = None
-            strike_price = None
-            option_type = None
+            # Option-specific fields in compact layout
+            if trade_type in ["put", "call"]:
+                st.markdown("**📋 Option Details**")
+                opt_col1, opt_col2 = st.columns(2)
 
-            # Always show option contract details form
-            st.write("**Option Contract Details**")
-            expiration_date = st.date_input(
-                "Expiration Date",
-                value=date.today(),
-                help="Option expiration date (ignored for stock trades)",
-            )
-            strike_price = st.number_input(
-                "Strike Price",
-                min_value=0.01,
-                value=150.0,
-                step=0.01,
-                help="Option strike price (ignored for stock trades)",
-            )
+                with opt_col1:
+                    expiration_date = st.date_input(
+                        "Expiration",
+                        value=date.today(),
+                        help="Option expiration date",
+                    )
 
-            strategy = st.text_input(
-                "Strategy", placeholder="wheel", help="Trading strategy name"
-            )
+                with opt_col2:
+                    strike_price = st.number_input(
+                        "Strike",
+                        min_value=0.01,
+                        value=150.0,
+                        step=0.01,
+                        help="Option strike price",
+                    )
+            else:
+                # For stock trades, set defaults
+                expiration_date = date.today()
+                strike_price = 150.0
 
-            submitted = st.form_submit_button("Add Trade")
+            submitted = st.form_submit_button("➕ Add Trade", use_container_width=True)
 
             if submitted:
                 if symbol and price > 0:
