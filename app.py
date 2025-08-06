@@ -1,6 +1,12 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date
+import sys
+import os
+
+# Add src directory to Python path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+
 from wheeltracker.db import db
 from wheeltracker.models import Trade
 from wheeltracker.calculations import cost_basis
@@ -33,8 +39,10 @@ def main():
             strike_price = None
             option_type = None
             
-            if trade_type in ["put", "call"]:
+            # Show option fields when trade type is put or call
+            if trade_type == "put" or trade_type == "call":
                 option_type = trade_type
+                st.write("**Option Contract Details**")
                 expiration_date = st.date_input(
                     "Expiration Date",
                     value=date.today(),
