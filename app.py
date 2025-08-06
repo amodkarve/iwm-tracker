@@ -433,7 +433,15 @@ def main():
                     st.markdown("<br>", unsafe_allow_html=True)
 
                     # Format the table for display with emojis
-                    display_df = obligations_df.copy()
+                    display_df = obligations_df[
+                        [
+                            "symbol",
+                            "strike_price",
+                            "expiration_date",
+                            "option_type",
+                            "net_quantity",
+                        ]
+                    ].copy()
                     display_df["symbol"] = display_df["symbol"].apply(
                         lambda x: f"💼 {x}"
                     )
@@ -450,15 +458,13 @@ def main():
                         lambda x: f"{'📈' if x == 'call' else '📉'} {x.upper()}"
                     )
 
-                    # Add action buttons
-                    display_df["Actions"] = "Close"
+                    # Rename columns for display
                     display_df.columns = [
                         "Symbol",
                         "Strike",
                         "Expiration",
                         "Type",
                         "Net Quantity",
-                        "Actions",
                     ]
 
                     # Style the obligations table
