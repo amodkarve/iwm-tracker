@@ -14,7 +14,8 @@ class TestCostBasis:
                 price=5.0,  # $5 premium
                 side="sell",
                 timestamp=datetime.now(),
-                strategy="put"
+                strategy="put",
+                option_type="put"
             ),
             Trade(
                 symbol="AAPL",
@@ -22,7 +23,8 @@ class TestCostBasis:
                 price=2.0,  # $2 premium to close
                 side="buy",
                 timestamp=datetime.now(),
-                strategy="put"
+                strategy="put",
+                option_type="put"
             )
         ]
         
@@ -44,7 +46,8 @@ class TestCostBasis:
                 price=5.0,  # $5 premium
                 side="sell",
                 timestamp=datetime.now(),
-                strategy="put"
+                strategy="put",
+                option_type="put"
             ),
             # Put gets assigned (buy shares at strike)
             Trade(
@@ -62,7 +65,8 @@ class TestCostBasis:
                 price=3.0,  # $3 premium
                 side="sell",
                 timestamp=datetime.now(),
-                strategy="call"
+                strategy="call",
+                option_type="call"
             )
         ]
         
@@ -84,7 +88,8 @@ class TestCostBasis:
                 price=5.0,  # $5 premium each
                 side="sell",
                 timestamp=datetime.now(),
-                strategy="put"
+                strategy="put",
+                option_type="put"
             ),
             # One put gets assigned
             Trade(
@@ -102,7 +107,8 @@ class TestCostBasis:
                 price=2.0,  # $2 premium to close
                 side="buy",
                 timestamp=datetime.now(),
-                strategy="put"
+                strategy="put",
+                option_type="put"
             )
         ]
         
@@ -155,7 +161,8 @@ class TestCostBasis:
                 price=5.0,
                 side="sell",
                 timestamp=datetime.now(),
-                strategy="put"
+                strategy="put",
+                option_type="put"
             ),
             # Put assigned
             Trade(
@@ -173,7 +180,8 @@ class TestCostBasis:
                 price=3.0,
                 side="sell",
                 timestamp=datetime.now(),
-                strategy="call"
+                strategy="call",
+                option_type="call"
             ),
             # Call assigned (shares called away)
             Trade(
@@ -191,7 +199,8 @@ class TestCostBasis:
                 price=4.0,
                 side="sell",
                 timestamp=datetime.now(),
-                strategy="put"
+                strategy="put",
+                option_type="put"
             )
         ]
         

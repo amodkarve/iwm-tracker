@@ -11,6 +11,10 @@ class Trade(BaseModel):
     side: str  # "buy" or "sell"
     timestamp: datetime
     strategy: Optional[str] = None
+    # Option contract details
+    expiration_date: Optional[datetime] = None  # For options: expiration date
+    strike_price: Optional[float] = None  # For options: strike price
+    option_type: Optional[str] = None  # "put" or "call" for options
 
 
 class Cashflow(BaseModel):

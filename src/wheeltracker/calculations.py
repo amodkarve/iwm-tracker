@@ -19,7 +19,7 @@ def cost_basis(trades: List[Trade]) -> dict[str, float]:
     
     for trade in trades:
         # Check if this is an option trade
-        is_option = trade.strategy and ("put" in trade.strategy.lower() or "call" in trade.strategy.lower())
+        is_option = trade.option_type is not None
         
         if trade.side == "buy":
             if is_option:

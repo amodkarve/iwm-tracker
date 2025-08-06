@@ -33,7 +33,10 @@ class Database:
                 price REAL NOT NULL,
                 side TEXT NOT NULL,
                 timestamp TEXT NOT NULL,
-                strategy TEXT
+                strategy TEXT,
+                expiration_date TEXT,
+                strike_price REAL,
+                option_type TEXT
             )
         """)
         
@@ -64,15 +67,18 @@ class Database:
         cursor = conn.cursor()
         
         cursor.execute("""
-            INSERT INTO trades (symbol, quantity, price, side, timestamp, strategy)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO trades (symbol, quantity, price, side, timestamp, strategy, expiration_date, strike_price, option_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             trade.symbol,
             trade.quantity,
             trade.price,
             trade.side,
             trade.timestamp.isoformat(),
-            trade.strategy
+            trade.strategy,
+            trade.expiration_date.isoformat() if trade.expiration_date else None,
+            trade.strike_price,
+            trade.option_type
         ))
         conn.commit()
         
@@ -91,7 +97,7 @@ class Database:
         cursor = conn.cursor()
         
         cursor.execute("""
-            SELECT id, symbol, quantity, price, side, timestamp, strategy
+            SELECT id, symbol, quantity, price, side, timestamp, strategy, expiration_date, strike_price, option_type
             FROM trades
             ORDER BY timestamp DESC
         """)
@@ -105,7 +111,10 @@ class Database:
                 price=row[3],
                 side=row[4],
                 timestamp=datetime.fromisoformat(row[5]),
-                strategy=row[6]
+                strategy=row[6],
+                expiration_date=datetime.fromisoformat(row[7]) if row[7] else None,
+                strike_price=row[8],
+                option_type=row[9]
             )
             trades.append(trade)
         
