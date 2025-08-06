@@ -28,11 +28,11 @@ class TestCostBasis:
         
         result = cost_basis(trades)
         
-        # Net premium received: $5 - $2 = $3
+        # Net premium received: ($5 - $2) * 100 = $300
         assert result['shares'] == 0  # No shares owned
         assert result['basis_without_premium'] == 0  # No stock basis
-        assert result['net_premium'] == 3.0  # $3 net premium received
-        assert result['basis_with_premium'] == -3.0  # Negative basis (profit)
+        assert result['net_premium'] == 300.0  # $300 net premium received
+        assert result['basis_with_premium'] == -300.0  # Negative basis (profit)
     
     def test_puts_assigned_then_covered_calls(self):
         """Test scenario where puts are assigned, then covered calls sold."""
@@ -68,11 +68,11 @@ class TestCostBasis:
         
         result = cost_basis(trades)
         
-        # Own 100 shares, paid $15000, received $8 in premiums
+        # Own 100 shares, paid $15000, received $800 in premiums
         assert result['shares'] == 100
         assert result['basis_without_premium'] == 15000.0  # 100 * $150
-        assert result['net_premium'] == 8.0  # $5 + $3 premiums received
-        assert result['basis_with_premium'] == 14992.0  # $15000 - $8
+        assert result['net_premium'] == 800.0  # ($5 + $3) * 100 premiums received
+        assert result['basis_with_premium'] == 14200.0  # $15000 - $800
     
     def test_partial_exercises(self):
         """Test scenario with partial option exercises."""
@@ -108,11 +108,11 @@ class TestCostBasis:
         
         result = cost_basis(trades)
         
-        # Own 100 shares, paid $15000, received $8 in premiums ($10 - $2)
+        # Own 100 shares, paid $15000, received $800 in premiums ($10 - $2) * 100
         assert result['shares'] == 100
         assert result['basis_without_premium'] == 15000.0  # 100 * $150
-        assert result['net_premium'] == 8.0  # $10 - $2 premiums
-        assert result['basis_with_premium'] == 14992.0  # $15000 - $8
+        assert result['net_premium'] == 800.0  # ($10 - $2) * 100 premiums
+        assert result['basis_with_premium'] == 14200.0  # $15000 - $800
     
     def test_stock_only_trades(self):
         """Test scenario with only stock trades (no options)."""
@@ -200,8 +200,8 @@ class TestCostBasis:
         # No shares owned, but received premiums and profit from stock sale
         assert result['shares'] == 0
         assert result['basis_without_premium'] == 0  # No shares
-        assert result['net_premium'] == 12.0  # $5 + $3 + $4 premiums
-        assert result['basis_with_premium'] == -12.0  # Negative basis (profit)
+        assert result['net_premium'] == 1200.0  # ($5 + $3 + $4) * 100 premiums
+        assert result['basis_with_premium'] == -1200.0  # Negative basis (profit)
     
     def test_empty_trades(self):
         """Test with empty trade list."""

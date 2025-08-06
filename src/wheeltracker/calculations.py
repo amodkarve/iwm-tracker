@@ -24,7 +24,8 @@ def cost_basis(trades: List[Trade]) -> dict[str, float]:
         if trade.side == "buy":
             if is_option:
                 # Option purchase - only affects premium, not shares
-                net_premium -= trade.quantity * trade.price  # Premium paid
+                # Option prices are per share, but contracts are for 100 shares
+                net_premium -= trade.quantity * trade.price * 100  # Premium paid
             else:
                 # Stock purchase - affects shares and basis
                 shares += trade.quantity
@@ -33,7 +34,8 @@ def cost_basis(trades: List[Trade]) -> dict[str, float]:
         elif trade.side == "sell":
             if is_option:
                 # Option sale - only affects premium, not shares
-                net_premium += trade.quantity * trade.price  # Premium received
+                # Option prices are per share, but contracts are for 100 shares
+                net_premium += trade.quantity * trade.price * 100  # Premium received
             else:
                 # Stock sale - affects shares and basis
                 shares -= trade.quantity
