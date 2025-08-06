@@ -121,37 +121,46 @@ def main():
                 price = st.number_input("Price", min_value=0.01, value=150.0, step=0.01)
                 strategy = st.text_input("Strategy", placeholder="wheel")
 
-            # Option-specific fields in compact layout
-            if trade_type in ["put", "call"]:
-                st.markdown("**📋 Option Details**")
-                opt_col1, opt_col2 = st.columns(2)
+                # Option contract details - always show for better UX
+            st.markdown("**📋 Contract Details**")
 
-                with opt_col1:
-                    expiration_date = st.date_input(
-                        "Expiration",
-                        value=date.today(),
-                        help="Option expiration date",
-                    )
+            # Three-column layout for: Date, Type, Strike
+            contract_col1, contract_col2, contract_col3 = st.columns(3)
 
-                with opt_col2:
-                    strike_price = st.number_input(
-                        "Strike",
-                        min_value=0.01,
-                        value=150.0,
-                        step=0.01,
-                        help="Option strike price",
-                    )
-            else:
-                # For stock trades, set defaults
-                expiration_date = date.today()
-                strike_price = 150.0
+            with contract_col1:
+                expiration_date = st.date_input(
+                    "Expiration",
+                    value=date.today(),
+                    help="Option expiration date (e.g., Aug 5, 2025)",
+                )
+
+            with contract_col2:
+                # Contract type display (not used in logic, just for reference)
+                st.selectbox(
+                    "Type",
+                    ["C", "P"],
+                    help="C = Call, P = Put",
+                    format_func=lambda x: "Call" if x == "C" else "Put",
+                )
+
+            with contract_col3:
+                strike_price = st.number_input(
+                    "Strike",
+                    min_value=0.01,
+                    value=150.0,
+                    step=0.01,
+                    help="Option strike price (e.g., 219)",
+                )
 
             submitted = st.form_submit_button("➕ Add Trade", use_container_width=True)
 
             if submitted:
                 if symbol and price > 0:
-                    # Set option type based on trade type
-                    option_type = trade_type if trade_type in ["put", "call"] else None
+                    # Determine option type from contract details
+                    is_option = trade_type in ["put", "call"]
+
+                    # Use trade_type for option_type field
+                    final_option_type = trade_type if is_option else None
 
                     # Create trade object
                     trade = Trade(
@@ -163,11 +172,11 @@ def main():
                         strategy=strategy if strategy else None,
                         expiration_date=(
                             datetime.combine(expiration_date, datetime.min.time())
-                            if option_type
+                            if is_option
                             else None
                         ),
-                        strike_price=strike_price if option_type else None,
-                        option_type=option_type,
+                        strike_price=strike_price if is_option else None,
+                        option_type=final_option_type,
                     )
 
                     # Insert trade
