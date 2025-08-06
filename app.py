@@ -547,7 +547,7 @@ def main():
                                 # Create the closing trade
                                 if "Buy to Close" in action_type:
                                     # Buy to close a short position
-                                    closing_trade = Trade(
+                                    trade_to_insert = Trade(
                                         symbol=selected_row["symbol"].upper(),
                                         quantity=selected_row["abs_quantity"],
                                         price=close_price,
@@ -558,9 +558,16 @@ def main():
                                         strike_price=selected_row["strike_price"],
                                         option_type=selected_row["option_type"],
                                     )
+
+                                    # Insert the closing trade
+                                    inserted_trade = db.insert_trade(trade_to_insert)
+                                    st.success(
+                                        f"Position closed: {action_type} - {inserted_trade.symbol} {inserted_trade.side} {inserted_trade.quantity}"
+                                    )
+                                    st.rerun()  # Refresh the page to show updated positions
                                 elif "Sell to Close" in action_type:
                                     # Sell to close a long position
-                                    closing_trade = Trade(
+                                    trade_to_insert = Trade(
                                         symbol=selected_row["symbol"].upper(),
                                         quantity=selected_row["abs_quantity"],
                                         price=close_price,
@@ -571,9 +578,20 @@ def main():
                                         strike_price=selected_row["strike_price"],
                                         option_type=selected_row["option_type"],
                                     )
+
+                                    # Insert the closing trade
+                                    inserted_trade = db.insert_trade(trade_to_insert)
+                                    st.success(
+                                        f"Position closed: {action_type} - {inserted_trade.symbol} {inserted_trade.side} {inserted_trade.quantity}"
+                                    )
+                                    st.rerun()  # Refresh the page to show updated positions
                                 elif "Exercise" in action_type:
-                                    # Assignment - create stock trade at strike price
-                                    closing_trade = Trade(
+                                    # Assignment - create TWO trades:
+                                    # 1. Stock trade (buying/selling shares at strike price)
+                                    # 2. Option trade (closing out the option position)
+
+                                    # Stock trade
+                                    stock_trade = Trade(
                                         symbol=selected_row["symbol"].upper(),
                                         quantity=selected_row["abs_quantity"]
                                         * 100,  # 100 shares per contract
@@ -590,12 +608,33 @@ def main():
                                         option_type=None,
                                     )
 
-                                # Insert the closing trade
-                                inserted_trade = db.insert_trade(closing_trade)
-                                st.success(
-                                    f"Position closed: {action_type} - {inserted_trade.symbol} {inserted_trade.side} {inserted_trade.quantity}"
-                                )
-                                st.rerun()  # Refresh the page to show updated positions
+                                    # Option closing trade
+                                    option_trade = Trade(
+                                        symbol=selected_row["symbol"].upper(),
+                                        quantity=selected_row["abs_quantity"],
+                                        price=0.01,  # Minimal price for assignment
+                                        side=(
+                                            "buy"
+                                            if selected_row["net_quantity"] < 0
+                                            else "sell"
+                                        ),
+                                        timestamp=datetime.now(),
+                                        strategy="assignment",
+                                        expiration_date=selected_row["expiration_date"],
+                                        strike_price=selected_row["strike_price"],
+                                        option_type=selected_row["option_type"],
+                                    )
+
+                                    # Insert both trades
+                                    inserted_stock = db.insert_trade(stock_trade)
+                                    db.insert_trade(
+                                        option_trade
+                                    )  # Close the option position
+
+                                    st.success(
+                                        f"Position exercised: {inserted_stock.symbol} {inserted_stock.side} {inserted_stock.quantity} shares + option closed"
+                                    )
+                                    st.rerun()  # Refresh the page to show updated positions
 
                             except Exception as e:
                                 st.error(f"Error closing position: {e}")

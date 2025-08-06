@@ -204,13 +204,14 @@ class TestPositionClosing:
 
     @patch("wheeltracker.db.db")
     def test_exercise_assignment_put(self, mock_db):
-        """Test put assignment (buying stock at strike price)."""
+        """Test put assignment (buying stock at strike price + closing option)."""
         # Mock the database
         mock_insert_trade = MagicMock()
         mock_db.insert_trade = mock_insert_trade
 
-        # Simulate assignment (buying stock at strike price)
-        assignment_trade = Trade(
+        # Simulate assignment - TWO trades should be created:
+        # 1. Stock trade (buying shares at strike price)
+        stock_trade = Trade(
             symbol="AAPL",
             quantity=100,  # 100 shares per contract
             price=150.0,  # Strike price
@@ -222,27 +223,50 @@ class TestPositionClosing:
             option_type=None,
         )
 
-        # Insert the assignment trade
-        mock_insert_trade.return_value = assignment_trade
-        result = mock_db.insert_trade(assignment_trade)
+        # 2. Option closing trade
+        option_trade = Trade(
+            symbol="AAPL",
+            quantity=1,
+            price=0.01,  # Minimal price for assignment
+            side="buy",  # Buy to close the short put
+            timestamp=datetime.now(),
+            strategy="assignment",
+            expiration_date=datetime(2025, 2, 21),
+            strike_price=150.0,
+            option_type="put",
+        )
 
-        # Verify the trade was created correctly
-        assert result.symbol == "AAPL"
-        assert result.quantity == 100  # 100 shares per contract
-        assert result.price == 150.0  # Strike price
-        assert result.side == "buy"  # Buy stock when put is assigned
-        assert result.strategy == "assignment"
-        assert result.option_type is None  # No longer an option trade
+        # Insert both trades
+        mock_insert_trade.side_effect = [stock_trade, option_trade]
+        result_stock = mock_db.insert_trade(stock_trade)
+        result_option = mock_db.insert_trade(option_trade)
+
+        # Verify the stock trade was created correctly
+        assert result_stock.symbol == "AAPL"
+        assert result_stock.quantity == 100  # 100 shares per contract
+        assert result_stock.price == 150.0  # Strike price
+        assert result_stock.side == "buy"  # Buy stock when put is assigned
+        assert result_stock.strategy == "assignment"
+        assert result_stock.option_type is None  # No longer an option trade
+
+        # Verify the option trade was created correctly
+        assert result_option.symbol == "AAPL"
+        assert result_option.quantity == 1
+        assert result_option.price == 0.01  # Minimal price
+        assert result_option.side == "buy"  # Buy to close
+        assert result_option.strategy == "assignment"
+        assert result_option.option_type == "put"
 
     @patch("wheeltracker.db.db")
     def test_exercise_assignment_call(self, mock_db):
-        """Test call assignment (selling stock at strike price)."""
+        """Test call assignment (selling stock at strike price + closing option)."""
         # Mock the database
         mock_insert_trade = MagicMock()
         mock_db.insert_trade = mock_insert_trade
 
-        # Simulate assignment (selling stock at strike price)
-        assignment_trade = Trade(
+        # Simulate assignment - TWO trades should be created:
+        # 1. Stock trade (selling shares at strike price)
+        stock_trade = Trade(
             symbol="AAPL",
             quantity=100,  # 100 shares per contract
             price=200.0,  # Strike price
@@ -254,14 +278,36 @@ class TestPositionClosing:
             option_type=None,
         )
 
-        # Insert the assignment trade
-        mock_insert_trade.return_value = assignment_trade
-        result = mock_db.insert_trade(assignment_trade)
+        # 2. Option closing trade
+        option_trade = Trade(
+            symbol="AAPL",
+            quantity=1,
+            price=0.01,  # Minimal price for assignment
+            side="buy",  # Buy to close the short call
+            timestamp=datetime.now(),
+            strategy="assignment",
+            expiration_date=datetime(2025, 2, 21),
+            strike_price=200.0,
+            option_type="call",
+        )
 
-        # Verify the trade was created correctly
-        assert result.symbol == "AAPL"
-        assert result.quantity == 100  # 100 shares per contract
-        assert result.price == 200.0  # Strike price
-        assert result.side == "sell"  # Sell stock when call is assigned
-        assert result.strategy == "assignment"
-        assert result.option_type is None  # No longer an option trade
+        # Insert both trades
+        mock_insert_trade.side_effect = [stock_trade, option_trade]
+        result_stock = mock_db.insert_trade(stock_trade)
+        result_option = mock_db.insert_trade(option_trade)
+
+        # Verify the stock trade was created correctly
+        assert result_stock.symbol == "AAPL"
+        assert result_stock.quantity == 100  # 100 shares per contract
+        assert result_stock.price == 200.0  # Strike price
+        assert result_stock.side == "sell"  # Sell stock when call is assigned
+        assert result_stock.strategy == "assignment"
+        assert result_stock.option_type is None  # No longer an option trade
+
+        # Verify the option trade was created correctly
+        assert result_option.symbol == "AAPL"
+        assert result_option.quantity == 1
+        assert result_option.price == 0.01  # Minimal price
+        assert result_option.side == "buy"  # Buy to close
+        assert result_option.strategy == "assignment"
+        assert result_option.option_type == "call"
