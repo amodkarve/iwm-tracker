@@ -23,22 +23,12 @@ def main():
         with st.form("add_trade_form"):
             symbol = st.text_input("Symbol", placeholder="AAPL")
             
-            # Trade type selection with session state
-            if "trade_type" not in st.session_state:
-                st.session_state.trade_type = "stock"
-            
+            # Trade type selection
             trade_type = st.selectbox(
                 "Trade Type",
                 ["stock", "put", "call"],
-                index=["stock", "put", "call"].index(st.session_state.trade_type),
-                key="trade_type_select",
                 help="Select the type of trade"
             )
-            
-            # Update session state when trade type changes
-            if trade_type != st.session_state.trade_type:
-                st.session_state.trade_type = trade_type
-                st.rerun()
             
             side = st.selectbox("Side", ["buy", "sell"])
             quantity = st.number_input("Quantity", min_value=1, value=1)
@@ -49,26 +39,20 @@ def main():
             strike_price = None
             option_type = None
             
-            # Always show option fields, but make them conditional
-            st.write(f"**Trade Type: {st.session_state.trade_type.upper()}**")
-            
-            if st.session_state.trade_type == "put" or st.session_state.trade_type == "call":
-                option_type = st.session_state.trade_type
-                st.write("**Option Contract Details**")
-                expiration_date = st.date_input(
-                    "Expiration Date",
-                    value=date.today(),
-                    help="Option expiration date"
-                )
-                strike_price = st.number_input(
-                    "Strike Price",
-                    min_value=0.01,
-                    value=150.0,
-                    step=0.01,
-                    help="Option strike price"
-                )
-            else:
-                st.write("**Stock Trade**")
+            # Always show option contract details form
+            st.write("**Option Contract Details**")
+            expiration_date = st.date_input(
+                "Expiration Date",
+                value=date.today(),
+                help="Option expiration date (ignored for stock trades)"
+            )
+            strike_price = st.number_input(
+                "Strike Price",
+                min_value=0.01,
+                value=150.0,
+                step=0.01,
+                help="Option strike price (ignored for stock trades)"
+            )
             
             strategy = st.text_input("Strategy", placeholder="wheel", help="Trading strategy name")
             
@@ -76,6 +60,9 @@ def main():
             
             if submitted:
                 if symbol and price > 0:
+                    # Set option type based on trade type
+                    option_type = trade_type if trade_type in ["put", "call"] else None
+                    
                     # Create trade object
                     trade = Trade(
                         symbol=symbol.upper(),
@@ -84,8 +71,8 @@ def main():
                         side=side,
                         timestamp=datetime.now(),
                         strategy=strategy if strategy else None,
-                        expiration_date=datetime.combine(expiration_date, datetime.min.time()) if expiration_date else None,
-                        strike_price=strike_price,
+                        expiration_date=datetime.combine(expiration_date, datetime.min.time()) if option_type else None,
+                        strike_price=strike_price if option_type else None,
                         option_type=option_type
                     )
                     
