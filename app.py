@@ -39,7 +39,9 @@ def main():
             strike_price = None
             option_type = None
             
-            # Show option fields when trade type is put or call
+            # Always show option fields, but make them conditional
+            st.write(f"**Trade Type: {trade_type.upper()}**")
+            
             if trade_type == "put" or trade_type == "call":
                 option_type = trade_type
                 st.write("**Option Contract Details**")
@@ -55,6 +57,8 @@ def main():
                     step=0.01,
                     help="Option strike price"
                 )
+            else:
+                st.write("**Stock Trade**")
             
             strategy = st.text_input("Strategy", placeholder="wheel", help="Trading strategy name")
             
