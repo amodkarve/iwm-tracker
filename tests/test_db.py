@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime
-from src.wheeltracker.models import Trade
-from src.wheeltracker.db import Database
+from wheeltracker.models import Trade
+from wheeltracker.db import Database
 
 
 class TestDatabase:
