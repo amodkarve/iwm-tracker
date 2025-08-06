@@ -11,75 +11,19 @@ class Database:
         self._conn = None
         self._init_db()
     
-    def _init_db(self):
-        """Initialize database and create tables if they don't exist."""
-        # For in-memory databases, we need to ensure the schema is created
-        # before any other operations
+    def _get_connection(self):
+        """Get a database connection, creating it if necessary."""
         if self.db_path == ":memory:":
-            self._conn = sqlite3.connect(self.db_path)
-            cursor = self._conn.cursor()
-            
-            # Create trades table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS trades (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    symbol TEXT NOT NULL,
-                    quantity INTEGER NOT NULL,
-                    price REAL NOT NULL,
-                    side TEXT NOT NULL,
-                    timestamp TEXT NOT NULL,
-                    strategy TEXT
-                )
-            """)
-            
-            # Create cashflows table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS cashflows (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    amount REAL NOT NULL,
-                    type TEXT NOT NULL,
-                    symbol TEXT,
-                    timestamp TEXT NOT NULL,
-                    description TEXT
-                )
-            """)
-            
-            self._conn.commit()
+            if self._conn is None:
+                self._conn = sqlite3.connect(self.db_path)
+                self._create_tables(self._conn.cursor())
+                self._conn.commit()
+            return self._conn
         else:
-            # For file-based databases, use the original approach
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # Create trades table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS trades (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    symbol TEXT NOT NULL,
-                    quantity INTEGER NOT NULL,
-                    price REAL NOT NULL,
-                    side TEXT NOT NULL,
-                    timestamp TEXT NOT NULL,
-                    strategy TEXT
-                )
-            """)
-            
-            # Create cashflows table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS cashflows (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    amount REAL NOT NULL,
-                    type TEXT NOT NULL,
-                    symbol TEXT,
-                    timestamp TEXT NOT NULL,
-                    description TEXT
-                )
-            """)
-            
-            conn.commit()
-            conn.close()
+            return sqlite3.connect(self.db_path)
     
-    def _ensure_tables_exist(self, cursor):
-        """Ensure tables exist (for in-memory databases)."""
+    def _create_tables(self, cursor):
+        """Create database tables if they don't exist."""
         # Create trades table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS trades (
@@ -105,102 +49,77 @@ class Database:
             )
         """)
     
+    def _init_db(self):
+        """Initialize database and create tables if they don't exist."""
+        if self.db_path != ":memory:":
+            # For file-based databases, create tables immediately
+            conn = self._get_connection()
+            self._create_tables(conn.cursor())
+            conn.commit()
+            conn.close()
+    
     def insert_trade(self, trade: Trade) -> Trade:
         """Insert a trade into the database."""
-        if self.db_path == ":memory:":
-            cursor = self._conn.cursor()
-            cursor.execute("""
-                INSERT INTO trades (symbol, quantity, price, side, timestamp, strategy)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                trade.symbol,
-                trade.quantity,
-                trade.price,
-                trade.side,
-                trade.timestamp.isoformat(),
-                trade.strategy
-            ))
-            self._conn.commit()
-            
-            # Get the inserted trade with ID
-            trade.id = cursor.lastrowid
-        else:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # Ensure tables exist (for in-memory databases)
-            self._ensure_tables_exist(cursor)
-            
-            cursor.execute("""
-                INSERT INTO trades (symbol, quantity, price, side, timestamp, strategy)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                trade.symbol,
-                trade.quantity,
-                trade.price,
-                trade.side,
-                trade.timestamp.isoformat(),
-                trade.strategy
-            ))
-            conn.commit()
-            
-            # Get the inserted trade with ID
-            trade.id = cursor.lastrowid
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO trades (symbol, quantity, price, side, timestamp, strategy)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            trade.symbol,
+            trade.quantity,
+            trade.price,
+            trade.side,
+            trade.timestamp.isoformat(),
+            trade.strategy
+        ))
+        conn.commit()
+        
+        # Get the inserted trade with ID
+        trade.id = cursor.lastrowid
+        
+        # Close connection for file-based databases
+        if self.db_path != ":memory:":
             conn.close()
         
         return trade
     
     def list_trades(self) -> List[Trade]:
         """Retrieve all trades from the database."""
-        if self.db_path == ":memory:":
-            cursor = self._conn.cursor()
-            cursor.execute("""
-                SELECT id, symbol, quantity, price, side, timestamp, strategy
-                FROM trades
-                ORDER BY timestamp DESC
-            """)
-            
-            trades = []
-            for row in cursor.fetchall():
-                trade = Trade(
-                    id=row[0],
-                    symbol=row[1],
-                    quantity=row[2],
-                    price=row[3],
-                    side=row[4],
-                    timestamp=datetime.fromisoformat(row[5]),
-                    strategy=row[6]
-                )
-                trades.append(trade)
-        else:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # Ensure tables exist (for in-memory databases)
-            self._ensure_tables_exist(cursor)
-            
-            cursor.execute("""
-                SELECT id, symbol, quantity, price, side, timestamp, strategy
-                FROM trades
-                ORDER BY timestamp DESC
-            """)
-            
-            trades = []
-            for row in cursor.fetchall():
-                trade = Trade(
-                    id=row[0],
-                    symbol=row[1],
-                    quantity=row[2],
-                    price=row[3],
-                    side=row[4],
-                    timestamp=datetime.fromisoformat(row[5]),
-                    strategy=row[6]
-                )
-                trades.append(trade)
-            
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT id, symbol, quantity, price, side, timestamp, strategy
+            FROM trades
+            ORDER BY timestamp DESC
+        """)
+        
+        trades = []
+        for row in cursor.fetchall():
+            trade = Trade(
+                id=row[0],
+                symbol=row[1],
+                quantity=row[2],
+                price=row[3],
+                side=row[4],
+                timestamp=datetime.fromisoformat(row[5]),
+                strategy=row[6]
+            )
+            trades.append(trade)
+        
+        # Close connection for file-based databases
+        if self.db_path != ":memory:":
             conn.close()
         
         return trades
+    
+    def close(self):
+        """Close the database connection."""
+        if self._conn is not None:
+            self._conn.close()
+            self._conn = None
 
 
 # Global database instance
