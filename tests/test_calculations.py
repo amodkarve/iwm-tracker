@@ -70,9 +70,9 @@ class TestCostBasis:
         
         # Own 100 shares, paid $15000, received $800 in premiums
         assert result['shares'] == 100
-        assert result['basis_without_premium'] == 15000.0  # 100 * $150
+        assert result['basis_without_premium'] == 150.0  # $15000 / 100 shares
         assert result['net_premium'] == 800.0  # ($5 + $3) * 100 premiums received
-        assert result['basis_with_premium'] == 14200.0  # $15000 - $800
+        assert result['basis_with_premium'] == 142.0  # ($15000 - $800) / 100 shares
     
     def test_partial_exercises(self):
         """Test scenario with partial option exercises."""
@@ -110,9 +110,9 @@ class TestCostBasis:
         
         # Own 100 shares, paid $15000, received $800 in premiums ($10 - $2) * 100
         assert result['shares'] == 100
-        assert result['basis_without_premium'] == 15000.0  # 100 * $150
+        assert result['basis_without_premium'] == 150.0  # $15000 / 100 shares
         assert result['net_premium'] == 800.0  # ($10 - $2) * 100 premiums
-        assert result['basis_with_premium'] == 14200.0  # $15000 - $800
+        assert result['basis_with_premium'] == 142.0  # ($15000 - $800) / 100 shares
     
     def test_stock_only_trades(self):
         """Test scenario with only stock trades (no options)."""
@@ -141,9 +141,9 @@ class TestCostBasis:
         
         # Own 50 shares, basis reduced proportionally
         assert result['shares'] == 50
-        assert result['basis_without_premium'] == 7500.0  # 50 * $150
+        assert result['basis_without_premium'] == 150.0  # $7500 / 50 shares
         assert result['net_premium'] == 0.0  # No options
-        assert result['basis_with_premium'] == 7500.0  # Same as without premium
+        assert result['basis_with_premium'] == 150.0  # Same as without premium
     
     def test_complex_wheel_strategy(self):
         """Test a complex wheel strategy with multiple cycles."""
