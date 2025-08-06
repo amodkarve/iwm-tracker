@@ -119,3 +119,26 @@ def open_option_obligations(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     return open_positions
+
+
+def get_open_option_positions_for_closing(df: pd.DataFrame) -> pd.DataFrame:
+    """Get open option positions with metadata for closing trades."""
+    open_positions = open_option_obligations(df)
+
+    if open_positions.empty:
+        return pd.DataFrame()
+
+    # Add metadata for closing trades
+    open_positions["position_id"] = range(len(open_positions))
+    open_positions["is_short"] = open_positions["net_quantity"] < 0
+    open_positions["abs_quantity"] = abs(open_positions["net_quantity"])
+
+    # For short positions, we can buy to close or get assigned
+    # For long positions, we can sell to close
+    open_positions["can_buy_to_close"] = open_positions["is_short"]
+    open_positions["can_sell_to_close"] = ~open_positions["is_short"]
+    open_positions["can_exercise"] = open_positions[
+        "is_short"
+    ]  # Only short positions can be assigned
+
+    return open_positions

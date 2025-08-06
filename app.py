@@ -15,7 +15,7 @@ from wheeltracker.analytics import (
     trades_to_dataframe,
     monthly_net_premium,
     cumulative_net_premium,
-    open_option_obligations,
+    get_open_option_positions_for_closing,
 )
 
 # Configure page
@@ -426,8 +426,8 @@ def main():
 
                     st.altair_chart(chart, use_container_width=True)
 
-                # Open Option Obligations Table
-                obligations_df = open_option_obligations(df)
+                # Open Option Obligations Table with Closing Actions
+                obligations_df = get_open_option_positions_for_closing(df)
                 if not obligations_df.empty:
                     st.markdown("### ⚠️ Open Option Obligations")
                     st.markdown("<br>", unsafe_allow_html=True)
@@ -449,12 +449,16 @@ def main():
                     display_df["option_type"] = display_df["option_type"].apply(
                         lambda x: f"{'📈' if x == 'call' else '📉'} {x.upper()}"
                     )
+
+                    # Add action buttons
+                    display_df["Actions"] = "Close"
                     display_df.columns = [
                         "Symbol",
                         "Strike",
                         "Expiration",
                         "Type",
                         "Net Quantity",
+                        "Actions",
                     ]
 
                     # Style the obligations table
@@ -473,6 +477,122 @@ def main():
                     )
 
                     st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+                    # Add closing functionality
+                    st.markdown("### 🔄 Close Positions")
+
+                    # Create a form for closing positions
+                    with st.form("close_position_form"):
+                        # Position selector
+                        position_options = []
+                        for idx, row in obligations_df.iterrows():
+                            symbol = row["symbol"]
+                            strike = row["strike_price"]
+                            exp = row["expiration_date"].strftime("%Y-%m-%d")
+                            opt_type = row["option_type"].upper()
+                            qty = abs(row["net_quantity"])
+                            side = "SHORT" if row["net_quantity"] < 0 else "LONG"
+
+                            position_options.append(
+                                f"{symbol} {strike} {opt_type} {exp} ({qty} {side})"
+                            )
+
+                        selected_position = st.selectbox(
+                            "Select Position to Close",
+                            position_options,
+                            help="Choose the option position to close",
+                        )
+
+                        # Get the selected position data
+                        selected_idx = position_options.index(selected_position)
+                        selected_row = obligations_df.iloc[selected_idx]
+
+                        # Action type selector
+                        action_options = []
+                        if selected_row["can_buy_to_close"]:
+                            action_options.append("Buy to Close")
+                        if selected_row["can_sell_to_close"]:
+                            action_options.append("Sell to Close")
+                        if selected_row["can_exercise"]:
+                            action_options.append("Exercise (Assignment)")
+
+                        action_type = st.selectbox(
+                            "Action", action_options, help="How to close this position"
+                        )
+
+                        # Price input (only for buy/sell to close)
+                        if "Close" in action_type:
+                            close_price = st.number_input(
+                                "Close Price",
+                                min_value=0.01,
+                                value=0.50,
+                                step=0.01,
+                                help="Price to close the position",
+                            )
+                        else:
+                            close_price = selected_row[
+                                "strike_price"
+                            ]  # Use strike for assignment
+
+                        close_submitted = st.form_submit_button("🔄 Close Position")
+
+                        if close_submitted:
+                            try:
+                                # Create the closing trade
+                                if "Buy to Close" in action_type:
+                                    # Buy to close a short position
+                                    closing_trade = Trade(
+                                        symbol=selected_row["symbol"].upper(),
+                                        quantity=selected_row["abs_quantity"],
+                                        price=close_price,
+                                        side="buy",
+                                        timestamp=datetime.now(),
+                                        strategy="close",
+                                        expiration_date=selected_row["expiration_date"],
+                                        strike_price=selected_row["strike_price"],
+                                        option_type=selected_row["option_type"],
+                                    )
+                                elif "Sell to Close" in action_type:
+                                    # Sell to close a long position
+                                    closing_trade = Trade(
+                                        symbol=selected_row["symbol"].upper(),
+                                        quantity=selected_row["abs_quantity"],
+                                        price=close_price,
+                                        side="sell",
+                                        timestamp=datetime.now(),
+                                        strategy="close",
+                                        expiration_date=selected_row["expiration_date"],
+                                        strike_price=selected_row["strike_price"],
+                                        option_type=selected_row["option_type"],
+                                    )
+                                elif "Exercise" in action_type:
+                                    # Assignment - create stock trade at strike price
+                                    closing_trade = Trade(
+                                        symbol=selected_row["symbol"].upper(),
+                                        quantity=selected_row["abs_quantity"]
+                                        * 100,  # 100 shares per contract
+                                        price=selected_row["strike_price"],
+                                        side=(
+                                            "buy"
+                                            if selected_row["option_type"] == "put"
+                                            else "sell"
+                                        ),
+                                        timestamp=datetime.now(),
+                                        strategy="assignment",
+                                        expiration_date=None,
+                                        strike_price=None,
+                                        option_type=None,
+                                    )
+
+                                # Insert the closing trade
+                                inserted_trade = db.insert_trade(closing_trade)
+                                st.success(
+                                    f"Position closed: {action_type} - {inserted_trade.symbol} {inserted_trade.side} {inserted_trade.quantity}"
+                                )
+                                st.rerun()  # Refresh the page to show updated positions
+
+                            except Exception as e:
+                                st.error(f"Error closing position: {e}")
                 else:
                     st.markdown(
                         """
