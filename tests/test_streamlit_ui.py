@@ -153,13 +153,16 @@ class TestStreamlitUI:
         trade_types = ["stock", "put", "call"]
         
         for trade_type in trade_types:
-            # Simulate the conditional logic from the app
+            # Simulate the conditional logic from the app (using session state)
             option_type = None
             expiration_date = None
             strike_price = None
             
-            if trade_type == "put" or trade_type == "call":
-                option_type = trade_type
+            # Simulate session state behavior
+            session_trade_type = trade_type
+            
+            if session_trade_type == "put" or session_trade_type == "call":
+                option_type = session_trade_type
                 expiration_date = date.today()
                 strike_price = 150.0
             
@@ -171,4 +174,19 @@ class TestStreamlitUI:
             else:
                 assert option_type is None
                 assert expiration_date is None
-                assert strike_price is None 
+                assert strike_price is None
+    
+    def test_session_state_initialization(self):
+        """Test that session state is properly initialized."""
+        # Simulate session state initialization
+        session_state = {}
+        
+        # Initialize trade type if not present
+        if "trade_type" not in session_state:
+            session_state["trade_type"] = "stock"
+        
+        assert session_state["trade_type"] == "stock"
+        
+        # Test updating session state
+        session_state["trade_type"] = "put"
+        assert session_state["trade_type"] == "put" 
