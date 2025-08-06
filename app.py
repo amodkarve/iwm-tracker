@@ -530,10 +530,10 @@ def main():
                         if "Close" in action_type:
                             close_price = st.number_input(
                                 "Close Price",
-                                min_value=0.01,
+                                min_value=0.0,
                                 value=0.50,
                                 step=0.01,
-                                help="Price to close the position",
+                                help="Price to close the position (can be 0 for assignments)",
                             )
                         else:
                             close_price = selected_row[
@@ -612,7 +612,7 @@ def main():
                                     option_trade = Trade(
                                         symbol=selected_row["symbol"].upper(),
                                         quantity=selected_row["abs_quantity"],
-                                        price=0.01,  # Minimal price for assignment
+                                        price=0.0,  # Zero price for assignment
                                         side=(
                                             "buy"
                                             if selected_row["net_quantity"] < 0

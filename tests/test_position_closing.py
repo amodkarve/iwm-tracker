@@ -227,7 +227,7 @@ class TestPositionClosing:
         option_trade = Trade(
             symbol="AAPL",
             quantity=1,
-            price=0.01,  # Minimal price for assignment
+            price=0.0,  # Zero price for assignment
             side="buy",  # Buy to close the short put
             timestamp=datetime.now(),
             strategy="assignment",
@@ -252,7 +252,7 @@ class TestPositionClosing:
         # Verify the option trade was created correctly
         assert result_option.symbol == "AAPL"
         assert result_option.quantity == 1
-        assert result_option.price == 0.01  # Minimal price
+        assert result_option.price == 0.0  # Zero price for assignment
         assert result_option.side == "buy"  # Buy to close
         assert result_option.strategy == "assignment"
         assert result_option.option_type == "put"
@@ -282,7 +282,7 @@ class TestPositionClosing:
         option_trade = Trade(
             symbol="AAPL",
             quantity=1,
-            price=0.01,  # Minimal price for assignment
+            price=0.0,  # Zero price for assignment
             side="buy",  # Buy to close the short call
             timestamp=datetime.now(),
             strategy="assignment",
@@ -307,7 +307,7 @@ class TestPositionClosing:
         # Verify the option trade was created correctly
         assert result_option.symbol == "AAPL"
         assert result_option.quantity == 1
-        assert result_option.price == 0.01  # Minimal price
+        assert result_option.price == 0.0  # Zero price for assignment
         assert result_option.side == "buy"  # Buy to close
         assert result_option.strategy == "assignment"
         assert result_option.option_type == "call"
