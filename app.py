@@ -336,7 +336,7 @@ def main():
                     # Enhanced chart styling
                     chart = (
                         alt.Chart(monthly_df)
-                        .mark_bar(size=30, cornerRadiusTop=5, cornerRadiusBottom=5)
+                        .mark_bar(size=30, cornerRadius=5)
                         .encode(
                             x=alt.X(
                                 "month:N", title="Month", axis=alt.Axis(labelAngle=45)
