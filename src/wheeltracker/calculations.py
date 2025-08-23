@@ -2,15 +2,21 @@ from typing import List
 from .models import Trade
 
 
-def cost_basis(trades: List[Trade]) -> dict[str, float]:
+def cost_basis(trades: List[Trade], use_wheel_strategy: bool = False) -> dict[str, float]:
     """
     Calculate cost basis metrics for a list of trades.
+    
+    Args:
+        trades: List of Trade objects to process
+        use_wheel_strategy: If True, applies wheel strategy accounting where premiums and 
+                          realized gains/losses are allocated to reduce effective cost basis
+                          for remaining shares. If False, uses standard cost basis calculation.
     
     Returns:
         dict with keys:
         - shares: current share position (positive = long, negative = short)
         - basis_without_premium: cost basis per share excluding option premiums
-        - basis_with_premium: cost basis per share including option premiums
+        - basis_with_premium: cost basis per share including option premiums (and realized gains/losses if use_wheel_strategy=True)
         - net_premium: total option premiums received/paid
     """
     shares = 0.0
@@ -56,7 +62,13 @@ def cost_basis(trades: List[Trade]) -> dict[str, float]:
     # Calculate basis with premium and realized gains/losses
     # When no shares remain, the basis reflects total profit/loss
     if shares > 0:
-        basis_with_premium = basis_without_premium - net_premium
+        if use_wheel_strategy:
+            # Wheel strategy: allocate premiums and realized gains/losses to reduce effective cost basis
+            basis_with_premium = basis_without_premium - net_premium - realized_gains_losses
+        else:
+            # Standard calculation: only subtract premiums
+            basis_with_premium = basis_without_premium - net_premium
+        
         basis_without_premium_per_share = basis_without_premium / shares
         basis_with_premium_per_share = basis_with_premium / shares
     else:

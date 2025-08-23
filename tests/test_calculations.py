@@ -398,3 +398,130 @@ class TestCostBasis:
         
         # Basis without premium: $15000 / 100 = $150
         assert result['basis_without_premium'] == 150.0 
+
+    def testWheelAssignmentIwmCostBasis(self):
+        """
+        Test wheel-strategy accounting for an IWM position when 10 covered calls are assigned.
+        
+        GIVEN:
+        - Initial shares: 1,500
+        - Purchase price per share: $227.00
+        - Total initial cost (C0): 1,500 * 227.00 = 340,500.00
+        - Total option premium collected so far (P): 4,599.00
+        - Covered calls sold: 10 contracts at strike 228.00 → 1,000 shares get assigned
+        - Assignment proceeds (A): 1,000 * 228.00 = 228,000.00
+        - Cost of assigned shares (CA): 1,000 * 227.00 = 227,000.00
+        - Realized PnL from assignment on the shares only (R_assign): A - CA = 1,000.00
+        - Remaining shares after assignment: 500
+        - Book value of remaining shares at original cost (BV_remain): 500 * 227.00 = 113,500.00
+        - Total realized cash inflows to date = P + A = 4,599.00 + 228,000.00 = 232,599.00
+        - Net cash outlay remaining after inflows (should equal effective remaining cost): 
+          NetOut = C0 - (P + A) = 340,500.00 - 232,599.00 = 107,901.00
+        
+        Effective cost basis for remaining shares:
+        - EffectiveRemainingCost (ERC) = BV_remain - (P + R_assign) 
+          = 113,500.00 - (4,599.00 + 1,000.00) 
+          = 113,500.00 - 5,599.00 
+          = 107,901.00
+        - Effective average cost per remaining share (EAC) = ERC / 500 = 107,901.00 / 500 = 215.802
+          *Round to cents if your system uses 2-decimal currency: 215.80*
+        """
+        from datetime import datetime
+        
+        trades = [
+            # Buy 1,500 shares at $227.00
+            Trade(
+                symbol="IWM",
+                quantity=1500,
+                price=227.00,
+                side="buy",
+                timestamp=datetime.now(),
+                strategy="stock"
+            ),
+            # Record total premium collected 4,599.00 (from previously sold calls)
+            # This represents the cumulative premium from multiple covered call sales
+            Trade(
+                symbol="IWM",
+                quantity=45,  # 45 contracts * 100 shares per contract = 4,500 shares
+                price=1.00,  # $1.00 per share to get 4,500.00 total (45 * 100 * 1.00 = 4,500.00)
+                side="sell",
+                timestamp=datetime.now(),
+                strategy="call",
+                option_type="call"
+            ),
+            # Additional premium to reach 4,599.00 total
+            Trade(
+                symbol="IWM",
+                quantity=1,  # 1 contract * 100 shares per contract = 100 shares
+                price=0.99,  # $0.99 per share to get 99.00 total (1 * 100 * 0.99 = 99.00)
+                side="sell",
+                timestamp=datetime.now(),
+                strategy="call",
+                option_type="call"
+            ),
+            # Assign 1,000 shares at 228.00 due to covered calls (10 contracts)
+            Trade(
+                symbol="IWM",
+                quantity=1000,
+                price=228.00,  # Strike price
+                side="sell",
+                timestamp=datetime.now(),
+                strategy="assignment"  # Assignment
+            ),
+            # Option closing trade for the assigned calls
+            Trade(
+                symbol="IWM",
+                quantity=10,  # 10 contracts assigned
+                price=0.0,  # Zero price for assignment
+                side="buy",
+                timestamp=datetime.now(),
+                strategy="assignment",
+                option_type="call"
+            )
+        ]
+        
+        result = cost_basis(trades, use_wheel_strategy=True)
+        
+        # Shares & book values
+        assert result['shares'] == 500, f"Expected remaining shares: 500, got: {result['shares']}"
+        assert result['basis_without_premium'] == 227.00, f"Expected avg cost without premium: 227.00, got: {result['basis_without_premium']}"
+        
+        # Book value of remaining shares at original cost: 500 * 227.00 = 113,500.00
+        book_value_remaining = result['shares'] * result['basis_without_premium']
+        assert book_value_remaining == 113500.00, f"Expected book value remaining: 113,500.00, got: {book_value_remaining}"
+        
+        # Realized results
+        # Realized PnL from assignment (shares-only): 1,000.00
+        # This is calculated as: (228.00 - 227.00) * 1000 = 1,000.00
+        assignment_proceeds = 1000 * 228.00  # 228,000.00
+        cost_of_assigned_shares = 1000 * 227.00  # 227,000.00
+        realized_pnl_assignment = assignment_proceeds - cost_of_assigned_shares  # 1,000.00
+        
+        # Premium realized/collected to date: 4,599.00
+        total_premium_collected = result['net_premium']
+        assert total_premium_collected == 4599.00, f"Expected total premium collected: 4,599.00, got: {total_premium_collected}"
+        
+        # Wheel strategy accounting - include realized gains/losses in basis calculation
+        # EffectiveRemainingCost (ERC) = BV_remain - (P + R_assign) = 113,500.00 - (4,599.00 + 1,000.00) = 107,901.00
+        effective_remaining_cost = book_value_remaining - (total_premium_collected + realized_pnl_assignment)
+        assert effective_remaining_cost == 107901.00, f"Expected effective remaining cost: 107,901.00, got: {effective_remaining_cost}"
+        
+        # Effective average cost per remaining share (EAC) to 3 decimals: 215.802
+        effective_average_cost_per_share = effective_remaining_cost / result['shares']
+        assert abs(effective_average_cost_per_share - 215.802) < 0.001, f"Expected EAC to 3 decimals: 215.802, got: {effective_average_cost_per_share}"
+        
+        # If code rounds to cents, EAC to 2 decimals: 215.80
+        effective_average_cost_per_share_rounded = round(effective_average_cost_per_share, 2)
+        assert effective_average_cost_per_share_rounded == 215.80, f"Expected EAC to 2 decimals: 215.80, got: {effective_average_cost_per_share_rounded}"
+        
+        # Verify the wheel strategy basis_with_premium calculation matches our expected EAC
+        assert abs(result['basis_with_premium'] - effective_average_cost_per_share) < 0.001, f"Expected basis_with_premium to match EAC: {effective_average_cost_per_share}, got: {result['basis_with_premium']}"
+        
+        # Cash-flow consistency check
+        # (initialCost) - (assignmentProceeds + premiums) == expected effective remaining cost
+        # i.e., 340,500.00 - (228,000.00 + 4,599.00) == 107,901.00
+        initial_cost = 1500 * 227.00  # 340,500.00
+        assignment_proceeds_total = 1000 * 228.00  # 228,000.00
+        cash_flow_check = initial_cost - (assignment_proceeds_total + total_premium_collected)
+        expected_effective_remaining_cost = 107901.00  # From wheel strategy requirements
+        assert cash_flow_check == expected_effective_remaining_cost, f"Cash flow consistency check failed: {initial_cost} - ({assignment_proceeds_total} + {total_premium_collected}) = {cash_flow_check}, expected: {expected_effective_remaining_cost}" 
