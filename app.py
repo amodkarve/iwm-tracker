@@ -273,8 +273,9 @@ def main():
                 # Determine colors based on values
                 shares_color = "🟢" if basis["shares"] >= 0 else "🔴"
                 premium_color = "🟢" if basis["net_premium"] >= 0 else "🔴"
+                pnl_color = "🟢" if basis["total_pnl"] >= 0 else "🔴"
 
-                col1, col2, col3, col4 = st.columns(4)
+                col1, col2, col3, col4, col5 = st.columns(5)
 
                 with col1:
                     st.markdown(
@@ -319,6 +320,18 @@ def main():
                         <div class="metric-label">💎 Net Premium</div>
                         <div class="metric-value">{premium_color} ${basis['net_premium']:.2f}</div>
                         <div style="font-size: 0.8rem; opacity: 0.8;">Option income</div>
+                    </div>
+                    """,
+                        unsafe_allow_html=True,
+                    )
+
+                with col5:
+                    st.markdown(
+                        f"""
+                    <div class="metric-card">
+                        <div class="metric-label">💰 Total PnL</div>
+                        <div class="metric-value">{pnl_color} ${basis['total_pnl']:.2f}</div>
+                        <div style="font-size: 0.8rem; opacity: 0.8;">Realized + Premium</div>
                     </div>
                     """,
                         unsafe_allow_html=True,

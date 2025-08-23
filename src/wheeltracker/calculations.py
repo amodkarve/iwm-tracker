@@ -77,9 +77,14 @@ def cost_basis(trades: List[Trade], use_wheel_strategy: bool = False) -> dict[st
         total_profit_loss = realized_gains_losses + net_premium
         basis_with_premium_per_share = -total_profit_loss  # Negative because profit is positive
     
+    # Calculate total PnL (realized gains/losses + net premium)
+    total_pnl = realized_gains_losses + net_premium
+    
     return {
         'shares': shares,
         'basis_without_premium': basis_without_premium_per_share,
         'basis_with_premium': basis_with_premium_per_share,
-        'net_premium': net_premium
+        'net_premium': net_premium,
+        'realized_gains_losses': realized_gains_losses,
+        'total_pnl': total_pnl
     } 
