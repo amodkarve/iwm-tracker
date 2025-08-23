@@ -265,7 +265,7 @@ def main():
 
             for symbol in sorted(symbols):
                 symbol_trades = [trade for trade in trades if trade.symbol == symbol]
-                basis = cost_basis(symbol_trades)
+                basis = cost_basis(symbol_trades, use_wheel_strategy=True)
 
                 # Create custom metric cards
                 st.markdown(f"### 📈 {symbol} Position")
