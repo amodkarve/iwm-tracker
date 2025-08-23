@@ -16,6 +16,7 @@ def cost_basis(trades: List[Trade]) -> dict[str, float]:
     shares = 0.0
     basis_without_premium = 0.0
     net_premium = 0.0
+    realized_gains_losses = 0.0  # Track realized gains/losses from stock sales
     
     for trade in trades:
         # Check if this is an option trade
@@ -40,21 +41,29 @@ def cost_basis(trades: List[Trade]) -> dict[str, float]:
                 # Stock sale - affects shares and basis
                 shares -= trade.quantity
                 if shares + trade.quantity > 0:  # Only if we had shares to sell
-                    # Calculate average cost basis for remaining shares
+                    # Calculate average cost basis for the shares being sold
                     avg_basis = basis_without_premium / (shares + trade.quantity)
+                    shares_sold_basis = avg_basis * trade.quantity
+                    
+                    # Calculate realized gain/loss from the sale
+                    sale_proceeds = trade.quantity * trade.price
+                    realized_gain_loss = sale_proceeds - shares_sold_basis
+                    realized_gains_losses += realized_gain_loss
+                    
+                    # Update basis for remaining shares
                     basis_without_premium = avg_basis * shares
     
-    # Calculate basis with premium and convert to per-share values
-    basis_with_premium = basis_without_premium - net_premium
-    
-    # Convert to per-share basis if we have shares
+    # Calculate basis with premium and realized gains/losses
+    # When no shares remain, the basis reflects total profit/loss
     if shares > 0:
+        basis_with_premium = basis_without_premium - net_premium
         basis_without_premium_per_share = basis_without_premium / shares
         basis_with_premium_per_share = basis_with_premium / shares
     else:
-        # When no shares, basis reflects the net premium as profit/loss
+        # When no shares, basis reflects total profit/loss including realized gains/losses
         basis_without_premium_per_share = 0.0
-        basis_with_premium_per_share = -net_premium  # Negative because it's profit
+        total_profit_loss = realized_gains_losses + net_premium
+        basis_with_premium_per_share = -total_profit_loss  # Negative because profit is positive
     
     return {
         'shares': shares,
