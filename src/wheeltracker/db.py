@@ -99,7 +99,7 @@ class Database:
         cursor.execute("""
             SELECT id, symbol, quantity, price, side, timestamp, strategy, expiration_date, strike_price, option_type
             FROM trades
-            ORDER BY timestamp DESC
+            ORDER BY timestamp ASC
         """)
         
         trades = []
