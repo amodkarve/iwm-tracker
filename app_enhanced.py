@@ -115,22 +115,32 @@ def main():
     header_col1, header_col2, header_col3 = st.columns([2, 1, 1])
     
     with header_col2:
-        # Get available database files
+        # Define standard database options
+        standard_dbs = ["wheel.db", "wheel_test.db"]
+        
+        # Get any additional .db files that exist
         import glob
-        db_files = glob.glob("*.db")
-        if not db_files:
-            db_files = ["wheel.db", "wheel_test.db"]
+        existing_db_files = glob.glob("*.db")
+        
+        # Combine standard and existing, remove duplicates, sort
+        all_dbs = sorted(list(set(standard_dbs + existing_db_files)))
         
         # Get current database from session state or environment
         if 'current_db' not in st.session_state:
             st.session_state.current_db = os.getenv('WHEEL_DB_PATH', 'wheel.db')
         
+        # Ensure current database is in the list
+        if st.session_state.current_db not in all_dbs:
+            all_dbs.append(st.session_state.current_db)
+            all_dbs.sort()
+        
         # Database selector
         selected_db = st.selectbox(
             "📊 Database",
-            options=db_files,
-            index=db_files.index(st.session_state.current_db) if st.session_state.current_db in db_files else 0,
-            help="Switch between test and production databases"
+            options=all_dbs,
+            index=all_dbs.index(st.session_state.current_db) if st.session_state.current_db in all_dbs else 0,
+            help="Switch between test and production databases",
+            format_func=lambda x: f"{'🟢 ' if 'test' not in x.lower() else '🟡 '}{x}"
         )
         
         # If database changed, reconnect
