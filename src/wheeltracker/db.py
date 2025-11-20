@@ -6,7 +6,12 @@ from datetime import datetime
 
 
 class Database:
-    def __init__(self, db_path: str = "wheel.db"):
+    def __init__(self, db_path: str = None):
+        # Support environment variable for database path
+        # This allows separate test and production databases
+        if db_path is None:
+            db_path = os.getenv('WHEEL_DB_PATH', 'wheel.db')
+        
         self.db_path = db_path
         self._conn = None
         self._init_db()
