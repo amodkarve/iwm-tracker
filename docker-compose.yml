@@ -13,6 +13,7 @@ services:
       # Mount source code for development (optional - remove in production)
       - ./src:/app/src
       - ./app_enhanced.py:/app/app_enhanced.py
+      - ./tests:/app/tests
     environment:
       - PYTHONUNBUFFERED=1
       - ACCOUNT_SIZE=1000000

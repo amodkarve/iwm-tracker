@@ -18,7 +18,7 @@ import os
 # Add src directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-from wheeltracker.db import db
+from wheeltracker.db import db, Database
 from wheeltracker.models import Trade
 from wheeltracker.calculations import cost_basis
 from wheeltracker.analytics import (
@@ -43,66 +43,146 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Custom CSS
+# Custom CSS - Modern Design System
 st.markdown(
     """
 <style>
-    .main-header {
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        margin-bottom: 2rem;
-        text-align: center;
-        color: white;
-        font-size: 2.5rem;
-        font-weight: bold;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    /* Import Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    /* Global Styles */
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
     }
     
+    /* Main Container */
+    .main {
+        background-color: #0F172A;
+        color: #F8FAFC;
+    }
+    
+    /* Cards */
     .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: rgba(30, 41, 59, 0.7);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         padding: 1.5rem;
-        border-radius: 15px;
-        color: white;
+        border-radius: 16px;
+        color: #F8FAFC;
         text-align: center;
         margin: 0.5rem 0;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        border-color: rgba(79, 70, 229, 0.5);
     }
     
     .metric-value {
-        font-size: 2rem;
-        font-weight: bold;
+        font-size: 2.2rem;
+        font-weight: 700;
         margin: 0.5rem 0;
+        background: linear-gradient(90deg, #818CF8, #C084FC);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
     
     .metric-label {
         font-size: 0.9rem;
-        opacity: 0.9;
+        font-weight: 500;
+        color: #94A3B8;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
     
-    .indicator-card {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        margin: 0.5rem 0;
+    /* Status Indicators */
+    .status-pill {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: inline-block;
     }
     
     .bullish {
-        background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+        background: rgba(34, 197, 94, 0.2);
+        color: #4ADE80;
+        border: 1px solid rgba(34, 197, 94, 0.3);
     }
     
     .bearish {
-        background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+        background: rgba(239, 68, 68, 0.2);
+        color: #F87171;
+        border: 1px solid rgba(239, 68, 68, 0.3);
     }
     
     .neutral {
-        background: linear-gradient(135deg, #888888 0%, #666666 100%);
+        background: rgba(148, 163, 184, 0.2);
+        color: #CBD5E1;
+        border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+    
+    /* Headers */
+    h1, h2, h3 {
+        color: #F8FAFC;
+        font-weight: 700;
+    }
+    
+    h3 {
+        font-size: 1.5rem;
+        margin-top: 2rem !important;
+        margin-bottom: 1rem !important;
+        border-bottom: 2px solid #1E293B;
+        padding-bottom: 0.5rem;
+    }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #0F172A;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 5px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+    }
+    
+    /* Expander Styling */
+    .streamlit-expanderHeader {
+        background-color: #1E293B;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+    
+    /* Button Styling */
+    .stButton button {
+        background: linear-gradient(90deg, #4F46E5, #7C3AED);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    
+    .stButton button:hover {
+        opacity: 0.9;
+        transform: scale(1.02);
     }
 </style>
-""",
+    """,
     unsafe_allow_html=True,
 )
+
 
 
 def main():
@@ -133,6 +213,15 @@ def main():
         if st.session_state.current_db not in all_dbs:
             all_dbs.append(st.session_state.current_db)
             all_dbs.sort()
+            
+        # CRITICAL: Ensure global db object matches session state
+        # This must happen on every run, not just when selection changes
+        global db
+        if db.db_path != st.session_state.current_db:
+            db = Database(st.session_state.current_db)
+            # Also update the module-level db in wheeltracker.db to be safe
+            import wheeltracker.db as db_module
+            db_module.db = db
         
         # Database selector
         selected_db = st.selectbox(
@@ -147,9 +236,11 @@ def main():
         if selected_db != st.session_state.current_db:
             st.session_state.current_db = selected_db
             # Reinitialize database connection
-            from wheeltracker.db import Database
-            global db
             db = Database(selected_db)
+            # Update module level as well
+            import wheeltracker.db as db_module
+            db_module.db = db
+            
             st.success(f"✅ Switched to {selected_db}")
             st.rerun()
     
@@ -239,16 +330,14 @@ def main():
         with st.spinner("Fetching IWM price..."):
             iwm_price = get_iwm_price()
             if iwm_price:
-                st.markdown(
-                    f"""
-                <div class="metric-card">
-                    <div class="metric-label">IWM Current Price</div>
-                    <div class="metric-value">${iwm_price:.2f}</div>
-                    <div style="font-size: 0.8rem; opacity: 0.8;">15-20 min delay</div>
-                </div>
-                """,
-                    unsafe_allow_html=True,
-                )
+                # Build HTML string explicitly to avoid syntax errors with multi-line strings
+                html = '<div class="metric-card">'
+                html += '<div class="metric-label">IWM Current Price</div>'
+                html += '<div class="metric-value">${:.2f}</div>'.format(iwm_price)
+                html += '<div style="font-size: 0.8rem; opacity: 0.8;">15-20 min delay</div>'
+                html += '</div>'
+                
+                st.markdown(html, unsafe_allow_html=True)
             else:
                 st.warning("Unable to fetch IWM price")
     
@@ -262,15 +351,13 @@ def main():
                 signal_class = "bullish" if trend_signal > 0 else "bearish" if trend_signal < 0 else "neutral"
                 signal_text = "BULLISH ↑" if trend_signal > 0 else "BEARISH ↓" if trend_signal < 0 else "NEUTRAL →"
                 
-                st.markdown(
-                    f"""
-                <div class="indicator-card {signal_class}">
-                    <div class="metric-label">Ehler's Trend</div>
-                    <div class="metric-value">{signal_text}</div>
-                </div>
-                """,
-                    unsafe_allow_html=True,
-                )
+                # Build HTML string explicitly
+                html = f'<div class="indicator-card {signal_class}">'
+                html += '<div class="metric-label">Ehler\'s Trend</div>'
+                html += f'<div class="metric-value">{signal_text}</div>'
+                html += '</div>'
+                
+                st.markdown(html, unsafe_allow_html=True)
             else:
                 st.warning("Unable to calculate trend")
     
@@ -284,15 +371,13 @@ def main():
                 signal_class = "bullish" if csi_signal > 0 else "bearish" if csi_signal < 0 else "neutral"
                 signal_text = "OVERBOUGHT" if csi_signal > 0 else "OVERSOLD" if csi_signal < 0 else "NEUTRAL"
                 
-                st.markdown(
-                    f"""
-                <div class="indicator-card {signal_class}">
-                    <div class="metric-label">Cycle Swing Momentum</div>
-                    <div class="metric-value">{signal_text}</div>
-                </div>
-                """,
-                    unsafe_allow_html=True,
-                )
+                # Build HTML string explicitly
+                html = f'<div class="indicator-card {signal_class}">'
+                html += '<div class="metric-label">Cycle Swing Momentum</div>'
+                html += f'<div class="metric-value">{signal_text}</div>'
+                html += '</div>'
+                
+                st.markdown(html, unsafe_allow_html=True)
             else:
                 st.warning("Unable to calculate momentum")
 
@@ -457,65 +542,55 @@ def main():
             annual_return_pct = perf.get('annualized_return', 0) * 100
             color = "🟢" if perf.get('on_track', False) else "🔴"
             st.markdown(
-                f"""
-            <div class="metric-card">
-                <div class="metric-label">Annualized Return</div>
-                <div class="metric-value">{color} {annual_return_pct:.2f}%</div>
-                <div style="font-size: 0.8rem; opacity: 0.8;">Target: 18-20%</div>
-            </div>
-            """,
+                '<div class="metric-card">'
+                '<div class="metric-label">Annualized Return</div>'
+                f'<div class="metric-value">{color} {annual_return_pct:.2f}%</div>'
+                '<div style="font-size: 0.8rem; opacity: 0.8;">Target: 18-20%</div>'
+                '</div>',
                 unsafe_allow_html=True,
             )
         
         with col2:
             total_premium = perf.get('total_premium', 0)
             st.markdown(
-                f"""
-            <div class="metric-card">
-                <div class="metric-label">Total Premium</div>
-                <div class="metric-value">${total_premium:,.0f}</div>
-                <div style="font-size: 0.8rem; opacity: 0.8;">All time</div>
-            </div>
-            """,
+                '<div class="metric-card">'
+                '<div class="metric-label">Total Premium</div>'
+                f'<div class="metric-value">${total_premium:,.0f}</div>'
+                '<div style="font-size: 0.8rem; opacity: 0.8;">All time</div>'
+                '</div>',
                 unsafe_allow_html=True,
             )
         
         with col3:
             win_rate = perf.get('win_rate', 0) * 100
             st.markdown(
-                f"""
-            <div class="metric-card">
-                <div class="metric-label">Win Rate</div>
-                <div class="metric-value">{win_rate:.1f}%</div>
-                <div style="font-size: 0.8rem; opacity: 0.8;">{perf.get('total_trades', 0)} closed trades</div>
-            </div>
-            """,
+                '<div class="metric-card">'
+                '<div class="metric-label">Win Rate</div>'
+                f'<div class="metric-value">{win_rate:.1f}%</div>'
+                f'<div style="font-size: 0.8rem; opacity: 0.8;">{perf.get("total_trades", 0)} closed trades</div>'
+                '</div>',
                 unsafe_allow_html=True,
             )
         
         with col4:
             avg_win = perf.get('avg_win', 0)
             st.markdown(
-                f"""
-            <div class="metric-card">
-                <div class="metric-label">Avg Win</div>
-                <div class="metric-value">${avg_win:.0f}</div>
-                <div style="font-size: 0.8rem; opacity: 0.8;">Per trade</div>
-            </div>
-            """,
+                '<div class="metric-card">'
+                '<div class="metric-label">Avg Win</div>'
+                f'<div class="metric-value">${avg_win:.0f}</div>'
+                '<div style="font-size: 0.8rem; opacity: 0.8;">Per trade</div>'
+                '</div>',
                 unsafe_allow_html=True,
             )
         
         with col5:
             days_active = perf.get('days_active', 0)
             st.markdown(
-                f"""
-            <div class="metric-card">
-                <div class="metric-label">Days Active</div>
-                <div class="metric-value">{days_active}</div>
-                <div style="font-size: 0.8rem; opacity: 0.8;">Trading days</div>
-            </div>
-            """,
+                '<div class="metric-card">'
+                '<div class="metric-label">Days Active</div>'
+                f'<div class="metric-value">{days_active}</div>'
+                '<div style="font-size: 0.8rem; opacity: 0.8;">Trading days</div>'
+                '</div>',
                 unsafe_allow_html=True,
             )
 
@@ -541,13 +616,11 @@ def main():
                 sizing = get_position_sizing_recommendation(option_price_input, account_value)
                 
                 st.info(
-                    f"""
-                    **Recommendation for ${option_price_input:.2f} option:**
-                    - 🎯 Daily Target: ${sizing['target_premium']:.0f}
-                    - 📊 Contracts: {sizing['contracts']}
-                    - 💰 Expected Premium: ${sizing['expected_premium']:.0f}
-                    - 📈 % of Account: {sizing['premium_pct']*100:.3f}%
-                    """
+                    f"**Recommendation for ${option_price_input:.2f} option:**\n"
+                    f"- 🎯 Daily Target: ${sizing['target_premium']:.0f}\n"
+                    f"- 📊 Contracts: {sizing['contracts']}\n"
+                    f"- 💰 Expected Premium: ${sizing['expected_premium']:.0f}\n"
+                    f"- 📈 % of Account: {sizing['premium_pct']*100:.3f}%"
                 )
 
         # Trade History (existing code)
@@ -593,56 +666,46 @@ def main():
             
             with col1:
                 st.markdown(
-                    f"""
-                <div class="metric-card">
-                    <div class="metric-label">📊 Shares</div>
-                    <div class="metric-value">{shares_color} {basis['shares']:.0f}</div>
-                </div>
-                """,
+                    '<div class="metric-card">'
+                    '<div class="metric-label">📊 Shares</div>'
+                    f'<div class="metric-value">{shares_color} {basis["shares"]:.0f}</div>'
+                    '</div>',
                     unsafe_allow_html=True,
                 )
             
             with col2:
                 st.markdown(
-                    f"""
-                <div class="metric-card">
-                    <div class="metric-label">💵 Basis (excl. premium)</div>
-                    <div class="metric-value">${basis['basis_without_premium']:.2f}</div>
-                </div>
-                """,
+                    '<div class="metric-card">'
+                    '<div class="metric-label">💵 Basis (excl. premium)</div>'
+                    f'<div class="metric-value">${basis["basis_without_premium"]:.2f}</div>'
+                    '</div>',
                     unsafe_allow_html=True,
                 )
             
             with col3:
                 st.markdown(
-                    f"""
-                <div class="metric-card">
-                    <div class="metric-label">🎯 Basis (incl. premium)</div>
-                    <div class="metric-value">${basis['basis_with_premium']:.2f}</div>
-                </div>
-                """,
+                    '<div class="metric-card">'
+                    '<div class="metric-label">🎯 Basis (incl. premium)</div>'
+                    f'<div class="metric-value">${basis["basis_with_premium"]:.2f}</div>'
+                    '</div>',
                     unsafe_allow_html=True,
                 )
             
             with col4:
                 st.markdown(
-                    f"""
-                <div class="metric-card">
-                    <div class="metric-label">💎 Net Premium</div>
-                    <div class="metric-value">{premium_color} ${basis['net_premium']:.2f}</div>
-                </div>
-                """,
+                    '<div class="metric-card">'
+                    '<div class="metric-label">💎 Net Premium</div>'
+                    f'<div class="metric-value">{premium_color} ${basis["net_premium"]:.2f}</div>'
+                    '</div>',
                     unsafe_allow_html=True,
                 )
             
             with col5:
                 st.markdown(
-                    f"""
-                <div class="metric-card">
-                    <div class="metric-label">💰 Total PnL</div>
-                    <div class="metric-value">{pnl_color} ${basis['total_pnl']:.2f}</div>
-                </div>
-                """,
+                    '<div class="metric-card">'
+                    '<div class="metric-label">💰 Total PnL</div>'
+                    f'<div class="metric-value">{pnl_color} ${basis["total_pnl"]:.2f}</div>'
+                    '</div>',
                     unsafe_allow_html=True,
                 )
 
