@@ -1,0 +1,53 @@
+//@version=4
+// Copyright (c) 2019-present, Franklin Moormann (cheatcountry)
+// Ehlers Instantaneous Trendline V1 [CC] script may be freely distributed under the MIT license.
+study("Ehlers Instantaneous Trendline V1 [CC]", overlay=true)
+
+inp = input(title="Source", type=input.source, defval=hl2)
+res = input(title="Resolution", type=input.resolution, defval="")
+rep = input(title="Allow Repainting?", type=input.bool, defval=false)
+bar = input(title="Allow Bar Color Change?", type=input.bool, defval=true)
+src = security(syminfo.tickerid, res, inp[rep ? 0 : barstate.isrealtime ? 1 : 0])[rep ? 0 : barstate.isrealtime ? 0 : 1]
+    
+pi = 2 * asin(1)
+period = 0.0
+smooth = ((4 * src) + (3 * nz(src[1])) + (2 * nz(src[2])) + nz(src[3])) / 10
+detrender = ((0.0962 * smooth) + (0.5769 * nz(smooth[2])) - (0.5769 * nz(smooth[4])) - (0.0962 * nz(smooth[6]))) * ((0.075 * nz(period[1])) + 0.54)
+
+q1 = ((0.0962 * detrender) + (0.5769 * nz(detrender[2])) - (0.5769 * nz(detrender[4])) - (0.0962 * nz(detrender[6]))) * ((0.075 * nz(period[1])) + 0.54)
+i1 = nz(detrender[3])
+
+jI = ((0.0962 * i1) + (0.5769 * nz(i1[2])) - (0.5769 * nz(i1[4])) - (0.0962 * nz(i1[6]))) * ((0.075 * nz(period[1])) + 0.54)
+jQ = ((0.0962 * q1) + (0.5769 * nz(q1[2])) - (0.5769 * nz(q1[4])) - (0.0962 * nz(q1[6]))) * ((0.075 * nz(period[1])) + 0.54)
+
+i2 = i1 - jQ
+i2 := (0.2 * i2) + (0.8 * nz(i2[1]))
+q2 = q1 + jI
+q2 := (0.2 * q2) + (0.8 * nz(q2[1]))
+
+re = (i2 * nz(i2[1])) + (q2 * nz(q2[1]))
+re := (0.2 * re) + (0.8 * nz(re[1]))
+im = (i2 * nz(q2[1])) - (q2 * nz(i2[1]))
+im := (0.2 * im) + (0.8 * nz(im[1]))
+
+period := im != 0 and re != 0 ? 2 * pi / atan(im / re) : 0
+period := min(max(period, 0.67 * nz(period[1])), 1.5 * nz(period[1]))
+period := min(max(period, 6), 50)
+period := (0.2 * period) + (0.8 * nz(period[1]))
+
+smoothPeriod = 0.0
+smoothPeriod := (0.33 * period) + (0.67 * nz(smoothPeriod[1]))
+
+dcPeriod = ceil(smoothPeriod + 0.5), iTrend = 0.0
+for i = 0 to dcPeriod - 1
+    iTrend := iTrend + nz(src[i])
+iTrend := dcPeriod > 0 ? iTrend / dcPeriod : iTrend
+
+trendline = ((4 * iTrend) + (3 * nz(iTrend[1])) + (2 * nz(iTrend[2])) + nz(iTrend[3])) / 10
+
+sig = smooth > trendline ? 1 : smooth < trendline ? -1 : 0
+alertcondition(crossover(sig, 0), "Buy Signal", "Bullish Change Detected")
+alertcondition(crossunder(sig, 0), "Sell Signal", "Bearish Change Detected")
+tlColor = sig > 0 ? color.green : sig < 0 ? color.red : color.black
+barcolor(bar ? tlColor : na)
+plot(trendline, title="Trendline", color=tlColor, linewidth=2)

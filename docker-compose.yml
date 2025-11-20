@@ -4,24 +4,28 @@ services:
   wheel-tracker:
     build:
       context: .
-      dockerfile: Dockerfile.optimized
+      dockerfile: Dockerfile
     ports:
       - "${PORT:-8501}:8501"
     volumes:
-      # Mount the database file from the host
-      - ./data:/app/data
-      # Mount the database file specifically
+      # Mount database to persist data
       - ./wheel.db:/app/wheel.db
+      # Mount source code for development (optional - remove in production)
+      - ./src:/app/src
+      - ./app_enhanced.py:/app/app_enhanced.py
     environment:
-      - STREAMLIT_SERVER_PORT=8501
-      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
-      - STREAMLIT_SERVER_HEADLESS=true
-      - STREAMLIT_SERVER_ENABLE_CORS=false
-      - STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
+      - PYTHONUNBUFFERED=1
+      - ACCOUNT_SIZE=1000000
+      # Market Data App API Token (optional - for real-time data)
+      # Get token from: https://dashboard.marketdata.app/
+      # Trader plan ($75/month) recommended
+      - MARKETDATA_API_TOKEN=${MARKETDATA_API_TOKEN:-}
+    env_file:
+      - .env
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8501/_stcore/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 10s
