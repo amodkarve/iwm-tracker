@@ -29,10 +29,11 @@ from wheeltracker.analytics import (
 )
 
 # Import new modules
-from market_data import get_iwm_price, get_price_series, get_hl2_series
+from market_data import get_iwm_price, get_price_series, get_hl2_series, get_data_source
 from indicators import calculate_instantaneous_trend, calculate_cycle_swing
-from strategy import calculate_daily_target, get_position_sizing_recommendation
+from strategy import calculate_daily_target, get_position_sizing_recommendation, get_trade_recommendations
 from analytics.performance import get_performance_summary
+
 
 # Configure page
 st.set_page_config(
@@ -241,6 +242,149 @@ def main():
                 )
             else:
                 st.warning("Unable to calculate momentum")
+
+    # Trade Recommendations Section
+    st.markdown("## 💡 Trade Recommendations")
+    
+    st.markdown("### 🎯 Suggested 1 DTE Puts to Sell")
+    
+    with st.spinner("Analyzing market and generating recommendations..."):
+        try:
+            recommendations = get_trade_recommendations(account_value=1_000_000, max_recommendations=3)
+            
+            if recommendations:
+                data_source = get_data_source()
+                if data_source == 'marketdata':
+                    st.success("✅ Using real-time Market Data App for recommendations")
+                else:
+                    st.warning("⚠️ Using estimated data (Market Data App not configured)")
+                
+                for i, rec in enumerate(recommendations, 1):
+                    # Confidence badge
+                    confidence_colors = {
+                        'high': '🟢',
+                        'medium': '🟡',
+                        'low': '🔴'
+                    }
+                    confidence_badge = confidence_colors.get(rec.confidence, '⚪')
+                    
+                    with st.expander(f"{confidence_badge} **Recommendation #{i}** - Strike ${rec.strike:.2f} ({rec.confidence.upper()} confidence)", expanded=(i==1)):
+                        # Display recommendation details
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            st.metric("Strike Price", f"${rec.strike:.2f}")
+                            st.metric("Bid/Ask", f"${rec.bid:.2f} / ${rec.ask:.2f}")
+                            st.metric("Mid Price", f"${rec.mid:.2f}")
+                        
+                        with col2:
+                            st.metric("Recommended Contracts", rec.recommended_contracts)
+                            st.metric("Expected Premium", f"${rec.expected_premium:.0f}")
+                            st.metric("% of Account", f"{rec.premium_pct*100:.3f}%")
+                        
+                        with col3:
+                            if rec.delta is not None:
+                                st.metric("Delta", f"{rec.delta:.3f}")
+                            if rec.iv is not None:
+                                st.metric("IV", f"{rec.iv*100:.1f}%")
+                            if rec.volume is not None:
+                                st.metric("Volume", f"{rec.volume:,}")
+                        
+                        # Reasoning
+                        st.info(f"**Analysis:** {rec.reason}")
+                        
+                        # Quick Entry Form
+                        st.markdown("#### 🚀 Quick Entry")
+                        
+                        with st.form(f"quick_entry_{i}"):
+                            qe_col1, qe_col2, qe_col3 = st.columns(3)
+                            
+                            with qe_col1:
+                                qe_contracts = st.number_input(
+                                    "Contracts",
+                                    min_value=1,
+                                    max_value=20,
+                                    value=rec.recommended_contracts,
+                                    key=f"qe_contracts_{i}"
+                                )
+                            
+                            with qe_col2:
+                                qe_price = st.number_input(
+                                    "Fill Price",
+                                    min_value=0.01,
+                                    value=float(rec.recommended_price),
+                                    step=0.01,
+                                    key=f"qe_price_{i}",
+                                    help="Adjust based on your actual fill"
+                                )
+                            
+                            with qe_col3:
+                                qe_strategy = st.text_input(
+                                    "Strategy",
+                                    value="wheel",
+                                    key=f"qe_strategy_{i}"
+                                )
+                            
+                            # Calculate expected premium with user's inputs
+                            user_premium = qe_price * qe_contracts * 100
+                            st.caption(f"💰 Expected Premium: ${user_premium:.2f}")
+                            
+                            # IMPORTANT: Button label must be static, otherwise Streamlit thinks it's a new button
+                            # when the price changes and won't trigger the form submission
+                            qe_submit = st.form_submit_button(
+                                "✅ Enter Trade",
+                                use_container_width=True
+                            )
+                            
+                            if qe_submit:
+                                st.write("🔍 Debug: Form submitted!")  # Debug message
+                                try:
+                                    # Convert expiration date properly
+                                    # rec.expiration is a date object, need to convert to datetime
+                                    if isinstance(rec.expiration, date) and not isinstance(rec.expiration, datetime):
+                                        expiration_dt = datetime.combine(rec.expiration, datetime.min.time())
+                                    else:
+                                        expiration_dt = rec.expiration
+                                    
+                                    # Create and insert trade
+                                    trade = Trade(
+                                        symbol=rec.symbol,
+                                        quantity=qe_contracts,
+                                        price=qe_price,
+                                        side="sell",
+                                        timestamp=datetime.now(),
+                                        strategy=qe_strategy,
+                                        expiration_date=expiration_dt,
+                                        strike_price=rec.strike,
+                                        option_type=rec.option_type
+                                    )
+                                    
+                                    st.write(f"🔍 Debug: Trade object created: {trade.symbol} {trade.quantity}x @ ${trade.price}")  # Debug
+                                    st.write(f"🔍 Debug: Expiration: {trade.expiration_date}")  # Debug
+                                    
+                                    inserted_trade = db.insert_trade(trade)
+                                    
+                                    st.write(f"🔍 Debug: Trade inserted with ID: {inserted_trade.id}")  # Debug
+                                    
+                                    st.success(f"🎉 Trade entered! Sold {qe_contracts} {rec.symbol} ${rec.strike:.2f} puts @ ${qe_price:.2f}")
+                                    st.balloons()
+                                    
+                                    st.write("🔍 Debug: About to rerun...")  # Debug
+                                    st.rerun()
+                                    
+                                except Exception as e:
+                                    st.error(f"❌ Error entering trade: {e}")
+                                    import traceback
+                                    st.code(traceback.format_exc())
+
+            
+            else:
+                st.warning("No recommendations available. Check market data connection.")
+        
+        except Exception as e:
+            st.error(f"Error generating recommendations: {e}")
+            import traceback
+            st.code(traceback.format_exc())
 
     # Performance Metrics Section
     st.markdown("## 🎯 Performance Tracking")

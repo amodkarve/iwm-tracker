@@ -12,6 +12,10 @@ from .rules import (
     ROLL_PREMIUM_MAX,
     PREFERRED_DTE
 )
+from .trade_recommendations import (
+    get_trade_recommendations,
+    TradeRecommendation
+)
 
 __all__ = [
     'calculate_daily_target',
@@ -22,6 +26,9 @@ __all__ = [
     'CLOSE_THRESHOLD',
     'ROLL_PREMIUM_MIN',
     'ROLL_PREMIUM_MAX',
-    'PREFERRED_DTE'
+    'PREFERRED_DTE',
+    'get_trade_recommendations',
+    'TradeRecommendation'
 ]
+
 
