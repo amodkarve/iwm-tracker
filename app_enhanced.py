@@ -106,12 +106,55 @@ st.markdown(
 
 
 def main():
-    # Header
-    st.markdown(
-        '<div class="main-header">🎯 IWM Put Selling Strategy Tracker</div>',
-        unsafe_allow_html=True,
-    )
-
+    """Main application"""
+    
+    # Database selector in header
+    st.markdown("### 🎯 IWM Put Selling Strategy Tracker")
+    
+    # Create header columns for database selector
+    header_col1, header_col2, header_col3 = st.columns([2, 1, 1])
+    
+    with header_col2:
+        # Get available database files
+        import glob
+        db_files = glob.glob("*.db")
+        if not db_files:
+            db_files = ["wheel.db", "wheel_test.db"]
+        
+        # Get current database from session state or environment
+        if 'current_db' not in st.session_state:
+            st.session_state.current_db = os.getenv('WHEEL_DB_PATH', 'wheel.db')
+        
+        # Database selector
+        selected_db = st.selectbox(
+            "📊 Database",
+            options=db_files,
+            index=db_files.index(st.session_state.current_db) if st.session_state.current_db in db_files else 0,
+            help="Switch between test and production databases"
+        )
+        
+        # If database changed, reconnect
+        if selected_db != st.session_state.current_db:
+            st.session_state.current_db = selected_db
+            # Reinitialize database connection
+            from wheeltracker.db import Database
+            global db
+            db = Database(selected_db)
+            st.success(f"✅ Switched to {selected_db}")
+            st.rerun()
+    
+    with header_col3:
+        # Show database info
+        db_size = os.path.getsize(st.session_state.current_db) if os.path.exists(st.session_state.current_db) else 0
+        db_type = "🟢 PROD" if "test" not in st.session_state.current_db.lower() else "🟡 TEST"
+        st.metric(
+            label="DB Status",
+            value=db_type,
+            delta=f"{db_size/1024:.1f} KB"
+        )
+    
+    st.markdown("---")
+    
     # Sidebar for adding trades
     with st.sidebar:
         st.markdown("### 📝 Add New Trade")
