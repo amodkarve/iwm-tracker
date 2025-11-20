@@ -32,6 +32,8 @@ from wheeltracker.analytics import (
 from market_data import get_iwm_price, get_price_series, get_hl2_series, get_data_source
 from indicators import calculate_instantaneous_trend, calculate_cycle_swing
 from strategy import calculate_daily_target, get_position_sizing_recommendation, get_trade_recommendations
+from strategy.trade_recommendations import get_hedging_recommendation, get_stock_replacement_recommendation
+from strategy.position_manager import calculate_capital_usage, get_current_positions
 from analytics.performance import get_performance_summary
 
 
@@ -43,141 +45,155 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Custom CSS - Modern Design System
+# Custom CSS - Daylight Professional Theme (Compact)
 st.markdown(
     """
 <style>
-    /* Import Google Fonts */
+    /* Import Inter Font */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
+    /* Global Variables */
+    :root {
+        --bg-light: #f8fafc;      /* Slate 50 */
+        --bg-card: #ffffff;       /* White */
+        --text-primary: #0f172a;  /* Slate 900 */
+        --text-secondary: #64748b;/* Slate 500 */
+        --accent-primary: #3b82f6;/* Blue 500 */
+        --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        --border-color: #e2e8f0;  /* Slate 200 */
+        --success-bg: #dcfce7;    /* Green 100 */
+        --success-text: #166534;  /* Green 800 */
+        --danger-bg: #fee2e2;     /* Red 100 */
+        --danger-text: #991b1b;   /* Red 800 */
+    }
+
     /* Global Styles */
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
+        color: var(--text-primary);
+        font-size: 14px; /* Compact base size */
     }
     
-    /* Main Container */
-    .main {
-        background-color: #0F172A;
-        color: #F8FAFC;
-    }
-    
-    /* Cards */
-    .metric-card {
-        background: rgba(30, 41, 59, 0.7);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 1.5rem;
-        border-radius: 16px;
-        color: #F8FAFC;
-        text-align: center;
-        margin: 0.5rem 0;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    
-    .metric-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-        border-color: rgba(79, 70, 229, 0.5);
-    }
-    
-    .metric-value {
-        font-size: 2.2rem;
-        font-weight: 700;
-        margin: 0.5rem 0;
-        background: linear-gradient(90deg, #818CF8, #C084FC);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    
-    .metric-label {
-        font-size: 0.9rem;
-        font-weight: 500;
-        color: #94A3B8;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    
-    /* Status Indicators */
-    .status-pill {
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        display: inline-block;
-    }
-    
-    .bullish {
-        background: rgba(34, 197, 94, 0.2);
-        color: #4ADE80;
-        border: 1px solid rgba(34, 197, 94, 0.3);
-    }
-    
-    .bearish {
-        background: rgba(239, 68, 68, 0.2);
-        color: #F87171;
-        border: 1px solid rgba(239, 68, 68, 0.3);
-    }
-    
-    .neutral {
-        background: rgba(148, 163, 184, 0.2);
-        color: #CBD5E1;
-        border: 1px solid rgba(148, 163, 184, 0.3);
+    /* Main Container Background */
+    .stApp {
+        background-color: var(--bg-light);
     }
     
     /* Headers */
     h1, h2, h3 {
-        color: #F8FAFC;
+        font-weight: 700 !important;
+        letter-spacing: -0.01em !important;
+        color: var(--text-primary) !important;
+    }
+    
+    h1 {
+        font-size: 1.8rem !important;
+        background: var(--accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        padding-bottom: 0.25rem;
+    }
+    
+    h2 { font-size: 1.4rem !important; margin-top: 1.5rem !important; }
+    h3 { font-size: 1.1rem !important; margin-top: 1rem !important; border-bottom: 1px solid var(--border-color); padding-bottom: 0.25rem; }
+
+    /* Metric Cards (Clean & Compact) */
+    .metric-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 8px; /* Reduced radius */
+        padding: 1rem;      /* Reduced padding */
+        text-align: center;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border-color: var(--accent-primary);
+    }
+    
+    .metric-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+        margin-bottom: 0.25rem;
+    }
+    
+    .metric-value {
+        font-size: 1.5rem; /* Reduced from 2rem */
         font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.1rem;
     }
     
-    h3 {
-        font-size: 1.5rem;
-        margin-top: 2rem !important;
-        margin-bottom: 1rem !important;
-        border-bottom: 2px solid #1E293B;
-        padding-bottom: 0.5rem;
-    }
-    
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
-    }
-    
-    ::-webkit-scrollbar-track {
-        background: #0F172A;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-        background: #334155;
-        border-radius: 5px;
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-        background: #475569;
-    }
-    
-    /* Expander Styling */
-    .streamlit-expanderHeader {
-        background-color: #1E293B;
+    /* Indicator Cards */
+    .indicator-card {
+        background: var(--bg-card);
         border-radius: 8px;
-        font-weight: 600;
+        padding: 0.75rem;
+        text-align: center;
+        border: 1px solid var(--border-color);
     }
     
-    /* Button Styling */
+    .indicator-card.bullish {
+        background-color: var(--success-bg);
+        border-color: #86efac;
+        color: var(--success-text);
+    }
+    
+    .indicator-card.bearish {
+        background-color: var(--danger-bg);
+        border-color: #fca5a5;
+        color: var(--danger-text);
+    }
+    
+    /* DataFrames & Tables */
+    .stDataFrame {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+    }
+    
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #f1f5f9; /* Slate 100 */
+        border-right: 1px solid var(--border-color);
+    }
+    
+    /* Inputs */
+    .stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"] {
+        background-color: #ffffff;
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 6px;
+        min-height: 36px;
+    }
+    
+    /* Buttons */
     .stButton button {
-        background: linear-gradient(90deg, #4F46E5, #7C3AED);
+        background: var(--accent-gradient);
         color: white;
+        font-weight: 500;
         border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        transition: all 0.2s;
+        padding: 0.4rem 1rem;
+        border-radius: 6px;
+        transition: opacity 0.2s;
+        width: 100%;
     }
     
     .stButton button:hover {
         opacity: 0.9;
-        transform: scale(1.02);
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
     }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 </style>
     """,
     unsafe_allow_html=True,
@@ -243,6 +259,9 @@ def main():
             
             st.success(f"✅ Switched to {selected_db}")
             st.rerun()
+            
+    # Fetch trades early for sidebar and analytics
+    trades = db.list_trades()
     
     with header_col3:
         # Show database info
@@ -258,6 +277,39 @@ def main():
     
     # Sidebar for adding trades
     with st.sidebar:
+        st.markdown("### 💰 Capital & Buying Power")
+        
+        # Account Size Input (Default 1M)
+        account_size = st.number_input(
+            "Account Size ($)", 
+            min_value=1000.0, 
+            value=1000000.0, 
+            step=10000.0,
+            format="%f"
+        )
+        
+        # Calculate Capital Usage
+        current_iwm_price = get_iwm_price() or 0.0
+        capital_stats = calculate_capital_usage(trades, account_size, {'IWM': current_iwm_price})
+        
+        # Display Buying Power
+        bp_usage = capital_stats['buying_power_usage_pct'] * 100
+        bp_color = "normal" if bp_usage < 50 else "off" if bp_usage < 75 else "inverse"
+        
+        st.metric(
+            "Buying Power Used",
+            f"{bp_usage:.1f}%",
+            f"${capital_stats['total_deployed']:,.0f} Deployed",
+            delta_color=bp_color
+        )
+        
+        st.progress(min(bp_usage / 100, 1.0))
+        
+        with st.expander("Details"):
+            st.write(f"**Cash Secured Puts:** ${capital_stats['cash_secured_puts']:,.0f}")
+            st.write(f"**Stock Position:** ${capital_stats['long_stock']:,.0f}")
+        
+        st.markdown("---")
         st.markdown("### 📝 Add New Trade")
 
         with st.form("add_trade_form"):
@@ -344,6 +396,7 @@ def main():
     with col2:
         with st.spinner("Calculating Ehler's Trend..."):
             hl2_series = get_hl2_series(period="3mo")
+            trend_signal = 0
             if not hl2_series.empty:
                 trend_result = calculate_instantaneous_trend(hl2_series)
                 trend_signal = int(trend_result['signal'].iloc[-1]) if not trend_result['signal'].empty else 0
@@ -364,6 +417,7 @@ def main():
     with col3:
         with st.spinner("Calculating Cycle Swing..."):
             price_series = get_price_series(period="3mo")
+            csi_signal = 0
             if not price_series.empty:
                 csi_result = calculate_cycle_swing(price_series)
                 csi_signal = int(csi_result['signal'].iloc[-1]) if not csi_result['signal'].empty else 0
@@ -380,6 +434,44 @@ def main():
                 st.markdown(html, unsafe_allow_html=True)
             else:
                 st.warning("Unable to calculate momentum")
+
+    # Strategy Alerts Section
+    if iwm_price:
+        # Get recommendations
+        hedge_rec = get_hedging_recommendation(
+            100000.0, 
+            get_current_positions(trades), 
+            trend_signal, 
+            csi_signal, 
+            iwm_price
+        )
+        
+        replace_rec = get_stock_replacement_recommendation(
+            100000.0,
+            capital_stats,
+            trend_signal,
+            iwm_price
+        )
+        
+        if hedge_rec or replace_rec:
+            st.markdown("## 🧠 Strategy Alerts")
+            alert_col1, alert_col2 = st.columns(2)
+            
+            with alert_col1:
+                if hedge_rec:
+                    st.error(
+                        f"**{hedge_rec.reason}**\n\n"
+                        f"📉 Buy {hedge_rec.recommended_contracts}x {hedge_rec.option_symbol} "
+                        f"(${hedge_rec.recommended_price:.2f})"
+                    )
+            
+            with alert_col2:
+                if replace_rec:
+                    st.success(
+                        f"**{replace_rec.reason}**\n\n"
+                        f"🔄 Sell 100 Shares, Buy 1x {replace_rec.option_symbol} "
+                        f"(${replace_rec.recommended_price:.2f})"
+                    )
 
     # Trade Recommendations Section
     st.markdown("## 💡 Trade Recommendations")
@@ -764,27 +856,91 @@ def main():
                 
                 st.altair_chart(chart, use_container_width=True)
             
-            # Open positions (existing code)
+            # Open positions
             obligations_df = get_open_option_positions_for_closing(df)
             if not obligations_df.empty:
                 st.markdown("### ⚠️ Open Option Obligations")
                 
-                display_df = obligations_df[
-                    ["symbol", "strike_price", "expiration_date", "option_type", "net_quantity"]
-                ].copy()
-                display_df["symbol"] = display_df["symbol"].apply(lambda x: f"💼 {x}")
-                display_df["strike_price"] = display_df["strike_price"].apply(lambda x: f"${x:.2f}")
-                display_df["expiration_date"] = display_df["expiration_date"].dt.strftime("%Y-%m-%d")
-                display_df["net_quantity"] = display_df["net_quantity"].apply(
-                    lambda x: f"{'🟢' if x > 0 else '🔴'} {x:+.0f}"
-                )
-                display_df["option_type"] = display_df["option_type"].apply(
-                    lambda x: f"{'📈' if x == 'call' else '📉'} {x.upper()}"
-                )
-                
-                display_df.columns = ["Symbol", "Strike", "Expiration", "Type", "Net Quantity"]
-                
-                st.dataframe(display_df, use_container_width=True, hide_index=True)
+                for i, row in obligations_df.iterrows():
+                    # Determine status and color
+                    is_short = row['net_quantity'] < 0
+                    qty_display = f"{'🔴' if is_short else '🟢'} {abs(row['net_quantity']):.0f}"
+                    type_display = f"{'📉' if row['option_type'] == 'put' else '📈'} {row['option_type'].upper()}"
+                    exp_display = row['expiration_date'].strftime("%Y-%m-%d")
+                    strike_display = f"${row['strike_price']:.2f}"
+                    
+                    # Create a card-like container for each position
+                    with st.container():
+                        st.markdown(
+                            f"""
+                            <div style="
+                                background: rgba(30, 41, 59, 0.5); 
+                                border: 1px solid rgba(255, 255, 255, 0.1); 
+                                border-radius: 12px; 
+                                padding: 1rem; 
+                                margin-bottom: 1rem;
+                                display: flex;
+                                align-items: center;
+                                justify-content: space-between;
+                            ">
+                                <div style="flex: 1;"><strong>{row['symbol']}</strong></div>
+                                <div style="flex: 1;">{type_display}</div>
+                                <div style="flex: 1;">{strike_display}</div>
+                                <div style="flex: 1;">{exp_display}</div>
+                                <div style="flex: 1;">{qty_display}</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                        
+                        # Management controls in an expander
+                        with st.expander(f"Manage Position {row['symbol']} {strike_display}"):
+                            with st.form(f"close_pos_{i}"):
+                                st.write("Close or Manage Position")
+                                close_col1, close_col2, close_col3 = st.columns(3)
+                                
+                                with close_col1:
+                                    close_action = st.selectbox(
+                                        "Action", 
+                                        ["Buy to Close" if is_short else "Sell to Close", "Expire (Worthless)", "Assigned/Exercised"],
+                                        key=f"action_{i}"
+                                    )
+                                
+                                with close_col2:
+                                    close_qty = st.number_input("Quantity", min_value=1, max_value=int(abs(row['net_quantity'])), value=int(abs(row['net_quantity'])), key=f"qty_{i}")
+                                
+                                with close_col3:
+                                    close_price = st.number_input("Price", min_value=0.0, value=0.01, step=0.01, key=f"price_{i}")
+                                
+                                submit_close = st.form_submit_button("Execute Trade")
+                                
+                                if submit_close:
+                                    # Determine trade details based on action
+                                    trade_side = "buy" if is_short else "sell"
+                                    trade_price = close_price
+                                    
+                                    if "Expire" in close_action:
+                                        trade_price = 0.0
+                                    
+                                    # Create closing trade
+                                    close_trade = Trade(
+                                        symbol=row['symbol'],
+                                        quantity=close_qty,
+                                        price=trade_price,
+                                        side=trade_side,
+                                        timestamp=datetime.now(),
+                                        strategy="close_position",
+                                        expiration_date=row['expiration_date'],
+                                        strike_price=row['strike_price'],
+                                        option_type=row['option_type']
+                                    )
+                                    
+                                    try:
+                                        db.insert_trade(close_trade)
+                                        st.success(f"✅ Position closed successfully!")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"❌ Error closing position: {e}")
             else:
                 st.success("🎉 No Open Option Obligations - All positions are closed!")
     

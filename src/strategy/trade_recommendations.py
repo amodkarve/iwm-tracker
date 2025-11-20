@@ -299,34 +299,138 @@ def _generate_reason(
         reasons.append("⚠️ Bearish trend")
     else:
         reasons.append("➡️ Neutral trend")
-    
+        
     # Momentum
     if momentum_signal > 0:
-        reasons.append("⚠️ Overbought")
+        reasons.append("🚀 Bullish momentum")
     elif momentum_signal < 0:
-        reasons.append("✅ Not oversold")
-    else:
-        reasons.append("➡️ Neutral momentum")
+        reasons.append("📉 Bearish momentum")
+        
+    # Pricing
+    if sizing['premium_pct'] >= TARGET_DAILY_PREMIUM_PCT:
+        reasons.append(f"💰 Good premium ({sizing['premium_pct']*100:.2f}%)")
     
-    # Premium target
-    if sizing['premium_pct'] >= TARGET_DAILY_PREMIUM_PCT * 0.9:
-        reasons.append(f"✅ Meets {TARGET_DAILY_PREMIUM_PCT*100:.2f}% target")
-    else:
-        reasons.append(f"⚠️ Below {TARGET_DAILY_PREMIUM_PCT*100:.2f}% target")
-    
-    # Delta
-    if pd.notna(put.get('delta')):
-        delta_abs = abs(put['delta'])
-        if 0.20 <= delta_abs <= 0.40:
-            reasons.append(f"✅ Good delta ({delta_abs:.2f})")
-        else:
-            reasons.append(f"➡️ Delta {delta_abs:.2f}")
-    
-    # Strike position
+    # Strike
     strike_pct = (iwm_price - put['strike']) / iwm_price
     if strike_pct > 0:
-        reasons.append(f"✅ {strike_pct*100:.1f}% OTM")
+        reasons.append(f"🛡️ {strike_pct*100:.1f}% OTM")
     else:
         reasons.append(f"⚠️ {abs(strike_pct)*100:.1f}% ITM")
     
     return " | ".join(reasons)
+
+
+def get_hedging_recommendation(
+    account_value: float,
+    current_positions: Dict,
+    trend_signal: int,
+    momentum_signal: int,
+    iwm_price: float
+) -> Optional[TradeRecommendation]:
+    """
+    Generate hedging recommendation if conditions are met.
+    Trigger: Bearish Trend AND Bearish Momentum
+    Action: Buy 5% OTM Puts
+    """
+    # Check triggers
+    if trend_signal >= 0 or momentum_signal >= 0:
+        return None
+        
+    # Calculate exposure (shares + short puts * 100)
+    # This is a simplified exposure calculation
+    stock_exposure = sum(current_positions.get('stock', {}).values())
+    # For options, we'd need more detailed position data, assuming 0 for now if not available
+    total_exposure_shares = stock_exposure
+    
+    if total_exposure_shares <= 0:
+        return None
+        
+    # Hedge sizing: 1 put per 200 shares (partial hedge)
+    contracts_needed = max(1, int(total_exposure_shares / 200))
+    
+    # Target Strike: 5% OTM
+    target_strike = iwm_price * 0.95
+    
+    # Expiration: ~30-45 days out is usually better for hedging, but for simplicity/consistency
+    # with this 1-DTE strategy, we might suggest a shorter term or just a placeholder
+    # Let's suggest 1 DTE for immediate protection in this context
+    from datetime import timedelta
+    expiration_date = date.today() + timedelta(days=1)
+    
+    # Estimate price (Black-Scholes would be better, but using rough estimate)
+    # 5% OTM put 1 DTE is usually cheap, maybe $0.10-$0.50 depending on IV
+    estimated_price = 0.25 
+    
+    return TradeRecommendation(
+        symbol='IWM',
+        option_symbol=f"IWM{expiration_date.strftime('%y%m%d')}P{int(target_strike*1000):08d}",
+        strike=target_strike,
+        expiration=expiration_date,
+        option_type='put',
+        bid=estimated_price * 0.9,
+        ask=estimated_price * 1.1,
+        mid=estimated_price,
+        recommended_price=estimated_price,
+        recommended_contracts=contracts_needed,
+        expected_premium=-estimated_price * 100 * contracts_needed, # Cost, not premium
+        premium_pct=0,
+        reason=f"🛡️ HEDGE: Bearish Trend & Momentum. Protect {total_exposure_shares} shares.",
+        confidence="high"
+    )
+
+
+def get_stock_replacement_recommendation(
+    account_value: float,
+    capital_usage: Dict,
+    trend_signal: int,
+    iwm_price: float
+) -> Optional[TradeRecommendation]:
+    """
+    Generate stock replacement recommendation.
+    Trigger: Bullish Trend AND High Capital Usage (>75%) AND Holding Stock
+    Action: Sell Stock, Buy DITM Call
+    """
+    # Check triggers
+    if trend_signal <= 0:
+        return None
+        
+    if capital_usage['buying_power_usage_pct'] < 0.75:
+        return None
+        
+    stock_positions = capital_usage.get('stock_positions', {})
+    iwm_shares = stock_positions.get('IWM', 0)
+    
+    if iwm_shares < 100:
+        return None
+        
+    # Logic: Replace 100 shares with 1 DITM Call
+    # Target Delta ~0.85 (Deep ITM)
+    # Strike approx 10-15% ITM
+    target_strike = iwm_price * 0.85
+    
+    from datetime import timedelta
+    expiration_date = date.today() + timedelta(days=1) # Short term replacement? 
+    # Usually stock replacement is longer term (LEAPS), but sticking to short term context
+    # Let's suggest 1 week out for better theta
+    expiration_date = date.today() + timedelta(days=7)
+    
+    # Estimate price (Intrinsic value + time value)
+    intrinsic_value = iwm_price - target_strike
+    estimated_price = intrinsic_value + 0.50 # Small time value
+    
+    return TradeRecommendation(
+        symbol='IWM',
+        option_symbol=f"IWM{expiration_date.strftime('%y%m%d')}C{int(target_strike*1000):08d}",
+        strike=target_strike,
+        expiration=expiration_date,
+        option_type='call',
+        bid=estimated_price * 0.95,
+        ask=estimated_price * 1.05,
+        mid=estimated_price,
+        recommended_price=estimated_price,
+        recommended_contracts=1,
+        expected_premium=-estimated_price * 100, # Cost
+        premium_pct=0,
+        reason=f"🔄 STOCK REPLACEMENT: High Capital Usage ({capital_usage['buying_power_usage_pct']*100:.1f}%). Free up BP by replacing 100 shares.",
+        confidence="medium"
+    )
