@@ -403,11 +403,11 @@ def get_new_put_recommendations(
         logger.warning("No puts available for new recommendations")
         return recommendations
     
-    # CRITICAL: Filter out unreasonable strikes
-    # For selling puts, we want strikes BELOW current price (OTM)
-    # Typically 1-5% OTM is reasonable
-    min_strike = iwm_price * 0.90  # 10% OTM minimum
-    max_strike = iwm_price * 1.02  # Slightly above current (max 2% ITM)
+    # CRITICAL: Filter to ATM and 1 strike ITM/OTM
+    # For selling puts, focus on strikes near current price
+    # Typically within $2 of current price (roughly 1-2 strikes)
+    min_strike = iwm_price - 2.0  # 1-2 strikes OTM
+    max_strike = iwm_price + 1.0  # 1 strike ITM
     
     puts = puts[
         (puts['strike'] >= min_strike) & 
@@ -422,9 +422,9 @@ def get_new_put_recommendations(
     
     # Analyze each put option
     for _, put in puts.iterrows():
-        # Additional validation: skip if strike is way off
-        if put['strike'] > iwm_price * 1.05 or put['strike'] < iwm_price * 0.85:
-            logger.warning(f"Skipping unreasonable strike ${put['strike']:.2f} (IWM: ${iwm_price:.2f})")
+        # Additional validation: skip if strike is outside ATM range
+        if abs(put['strike'] - iwm_price) > 2.5:
+            logger.warning(f"Skipping strike ${put['strike']:.2f} too far from ATM (IWM: ${iwm_price:.2f})")
             continue
         
         # Calculate position sizing
