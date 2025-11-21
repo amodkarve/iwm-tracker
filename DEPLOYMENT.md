@@ -66,6 +66,30 @@ Login with:
 - **Username**: `admin`
 - **Password**: (the one in `.streamlit/secrets.toml`)
 
+### 5. WebSocket Support (Crucial!)
+
+Streamlit requires WebSocket support. If using WordOps/Nginx, ensure your configuration includes:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8501;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 86400;
+    proxy_redirect off;
+    include proxy_params;
+}
+```
+
+To apply this on VPS:
+```bash
+ssh amod@178.156.200.64
+sudo nano /etc/nginx/sites-available/iwmtracker.shrekllc.com
+# Add the headers above
+sudo systemctl reload nginx
+```
+
 ---
 
 ## Manual Deployment (Alternative)
