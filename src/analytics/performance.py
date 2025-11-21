@@ -104,12 +104,15 @@ def calculate_annual_return(
             total_premium += trade.quantity * trade.price * 100 * multiplier
     
     # Calculate returns
-    total_return = total_premium / initial_account_value
+    total_return = total_premium / initial_account_value if initial_account_value > 0 else 0.0
     
     # Annualize
     days = (end_date - start_date).days
-    if days > 0:
-        annualized_return = (1 + total_return) ** (365 / days) - 1
+    # Use at least 1 day to avoid division by zero and to handle same-day trades
+    days = max(days, 1)
+    
+    if total_return != 0.0:
+        annualized_return = (1 + total_return) ** (365.0 / days) - 1
     else:
         annualized_return = 0.0
     

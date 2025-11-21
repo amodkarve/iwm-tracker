@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import TradeForm from './TradeForm'
+import ConvertRecommendation from './ConvertRecommendation'
 
 export default function Recommendations({ accountSize }) {
   const [recommendations, setRecommendations] = useState([])
   const [loading, setLoading] = useState(true)
+  const [convertingRec, setConvertingRec] = useState(null)
 
   const fetchRecommendations = async () => {
     try {
@@ -114,9 +116,29 @@ export default function Recommendations({ accountSize }) {
                 <div className="text-sm font-medium text-blue-900">Analysis:</div>
                 <div className="text-sm text-blue-800">{rec.reason}</div>
               </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setConvertingRec(rec)}
+                  className="btn-primary text-sm py-2 px-4"
+                >
+                  ➕ Create Trade
+                </button>
+              </div>
             </div>
           ))}
         </div>
+      )}
+
+      {convertingRec && (
+        <ConvertRecommendation
+          recommendation={convertingRec}
+          onClose={() => setConvertingRec(null)}
+          onSuccess={() => {
+            setConvertingRec(null)
+            fetchRecommendations()
+          }}
+        />
       )}
     </div>
   )
