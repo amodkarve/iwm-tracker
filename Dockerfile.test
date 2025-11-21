@@ -1,0 +1,23 @@
+# Test-specific Dockerfile for IWM Tracker
+# Optimized for running tests without Streamlit dependencies
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies (minimal for testing)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Default command for tests (can be overridden)
+CMD ["pytest", "-v"]
+

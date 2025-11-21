@@ -1,0 +1,19 @@
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      # Mount source code and tests for live updates
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./conftest.py:/app/conftest.py
+      - ./app_enhanced.py:/app/app_enhanced.py
+      - ./app.py:/app/app.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ACCOUNT_SIZE=1000000
+      - WHEEL_DB_PATH=/tmp/test_wheel.db
+    working_dir: /app
+    command: ["pytest", "-v"]
+
