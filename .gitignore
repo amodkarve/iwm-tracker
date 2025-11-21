@@ -29,6 +29,9 @@ Thumbs.db
 # Environment variables (contains secrets)
 .env
 
+# Streamlit secrets (contains passwords)
+.streamlit/secrets.toml
+
 # Database
 wheel.db
 *.db
