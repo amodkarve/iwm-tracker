@@ -15,8 +15,8 @@ echo "=================================="
 echo ""
 
 # Step 1: Build Docker image locally
-echo "📦 Step 1: Building Docker image locally..."
-docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+echo "📦 Step 1: Building Docker image locally (AMD64 for VPS)..."
+docker build --platform linux/amd64 -t ${IMAGE_NAME}:${IMAGE_TAG} .
 echo "✅ Image built successfully"
 echo ""
 
