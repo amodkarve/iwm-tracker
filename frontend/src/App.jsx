@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './components/Login'
 import Dashboard from './components/Dashboard'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { DatabaseProvider } from './contexts/DatabaseContext'
 import './App.css'
 
 function ProtectedRoute({ children }) {
@@ -34,9 +35,11 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppRoutes />
-      </Router>
+      <DatabaseProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </DatabaseProvider>
     </AuthProvider>
   )
 }

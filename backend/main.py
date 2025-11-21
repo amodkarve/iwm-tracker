@@ -13,7 +13,7 @@ import traceback
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from backend.routers import auth, trades, market_data, analytics, recommendations
+from backend.routers import auth, trades, market_data, analytics, recommendations, config
 
 app = FastAPI(
     title="IWM Tracker API",
@@ -57,6 +57,7 @@ app.include_router(trades.router, prefix="/api/trades", tags=["trades"])
 app.include_router(market_data.router, prefix="/api/market-data", tags=["market-data"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(recommendations.router, prefix="/api/recommendations", tags=["recommendations"])
+app.include_router(config.router, prefix="/api/config", tags=["config"])
 
 
 @app.get("/")

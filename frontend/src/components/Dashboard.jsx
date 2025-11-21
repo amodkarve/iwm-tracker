@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useDatabase } from '../contexts/DatabaseContext'
 import MarketData from './MarketData'
 import PerformanceMetrics from './PerformanceMetrics'
 import TradeHistory from './TradeHistory'
@@ -8,6 +9,7 @@ import Recommendations from './Recommendations'
 import Analytics from './Analytics'
 import CostBasis from './CostBasis'
 import OpenPositions from './OpenPositions'
+import DatabaseSwitcher from './DatabaseSwitcher'
 
 export default function Dashboard() {
   const { username, logout } = useAuth()
@@ -30,6 +32,7 @@ export default function Dashboard() {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
+              <DatabaseSwitcher />
               <span className="text-slate-600">Welcome, {username}</span>
               <button
                 onClick={handleLogout}
