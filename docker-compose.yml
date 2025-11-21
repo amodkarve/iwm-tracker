@@ -10,6 +10,8 @@ services:
     volumes:
       # Mount database to persist data
       - ./wheel.db:/app/wheel.db
+      # Mount Streamlit config and secrets
+      - ./.streamlit:/app/.streamlit:ro
       # Mount source code for development (optional - remove in production)
       - ./src:/app/src
       - ./app_enhanced.py:/app/app_enhanced.py
