@@ -83,8 +83,8 @@ def test_hedging_no_trigger():
     
     assert rec is None
 
-def test_stock_replacement_trigger():
-    # Trigger: Bullish Trend (1) AND High Capital Usage (>75%) AND Long Stock
+def test_stock_replacement_trigger_efficiency():
+    # Trigger: Bullish Trend (1) AND High Capital Usage (>75%)
     
     capital_stats = {
         'buying_power_usage_pct': 0.80,
@@ -99,22 +99,42 @@ def test_stock_replacement_trigger():
     )
     
     assert rec is not None
-    assert rec.option_type == 'call'
-    assert "STOCK REPLACEMENT" in rec.reason
-    assert rec.strike < 200.0 # ITM Call
+    assert "EFFICIENCY" in rec.reason
+    assert rec.confidence == "medium"
 
-def test_stock_replacement_no_trigger_low_usage():
-    # No Trigger: Low Capital Usage (50%)
+def test_stock_replacement_trigger_critical():
+    # Trigger: Bearish Trend (-1) BUT Critical Capital Usage (>90%)
+    # Should trigger because we need to free up BP
     
     capital_stats = {
-        'buying_power_usage_pct': 0.50,
+        'buying_power_usage_pct': 0.95,
         'stock_positions': {'IWM': 100}
     }
     
     rec = get_stock_replacement_recommendation(
         account_value=100000.0,
         capital_usage=capital_stats,
-        trend_signal=1,
+        trend_signal=-1, # Bearish
+        iwm_price=200.0
+    )
+    
+    assert rec is not None
+    assert "CRITICAL BP" in rec.reason
+    assert rec.confidence == "high"
+
+def test_stock_replacement_no_trigger_bearish_high():
+    # No Trigger: Bearish Trend (-1) AND High Usage (80%)
+    # Not critical enough to force replacement in a downtrend
+    
+    capital_stats = {
+        'buying_power_usage_pct': 0.80,
+        'stock_positions': {'IWM': 100}
+    }
+    
+    rec = get_stock_replacement_recommendation(
+        account_value=100000.0,
+        capital_usage=capital_stats,
+        trend_signal=-1,
         iwm_price=200.0
     )
     

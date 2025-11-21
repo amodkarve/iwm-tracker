@@ -31,7 +31,7 @@ from wheeltracker.analytics import (
 # Import new modules
 from market_data import get_iwm_price, get_price_series, get_hl2_series, get_data_source
 from indicators import calculate_instantaneous_trend, calculate_cycle_swing
-from strategy import calculate_daily_target, get_position_sizing_recommendation, get_trade_recommendations
+from strategy import calculate_daily_target, get_position_sizing_recommendation, get_trade_recommendations, get_all_recommendations, RecommendationType
 from strategy.trade_recommendations import get_hedging_recommendation, get_stock_replacement_recommendation
 from strategy.position_manager import calculate_capital_usage, get_current_positions
 from analytics.performance import get_performance_summary
@@ -474,13 +474,18 @@ def main():
                     )
 
     # Trade Recommendations Section
-    st.markdown("## 💡 Trade Recommendations")
+    st.markdown("## 💡 Comprehensive Trade Recommendations")
     
-    st.markdown("### 🎯 Suggested 1 DTE Puts to Sell")
+    st.markdown("### 🎯 All Strategies (Rolling, New Trades, Hedging, Substitution)")
     
     with st.spinner("Analyzing market and generating recommendations..."):
         try:
-            recommendations = get_trade_recommendations(account_value=1_000_000, max_recommendations=3)
+            # Use comprehensive recommendation engine
+            recommendations = get_all_recommendations(
+                trades=trades,
+                account_value=account_size,
+                max_recommendations=10
+            )
             
             if recommendations:
                 data_source = get_data_source()
@@ -488,6 +493,23 @@ def main():
                     st.success("✅ Using real-time Market Data App for recommendations")
                 else:
                     st.warning("⚠️ Using estimated data (Market Data App not configured)")
+                
+                # Group recommendations by type
+                action_icons = {
+                    RecommendationType.ROLL: "🔄",
+                    RecommendationType.HEDGE: "🛡️",
+                    RecommendationType.SUBSTITUTE: "🔄",
+                    RecommendationType.OPEN_COVERED_CALL: "📞",
+                    RecommendationType.OPEN_PUT: "📉"
+                }
+                
+                action_labels = {
+                    RecommendationType.ROLL: "ROLL",
+                    RecommendationType.HEDGE: "HEDGE",
+                    RecommendationType.SUBSTITUTE: "SUBSTITUTE",
+                    RecommendationType.OPEN_COVERED_CALL: "COVERED CALL",
+                    RecommendationType.OPEN_PUT: "NEW PUT"
+                }
                 
                 for i, rec in enumerate(recommendations, 1):
                     # Confidence badge
@@ -498,7 +520,13 @@ def main():
                     }
                     confidence_badge = confidence_colors.get(rec.confidence, '⚪')
                     
-                    with st.expander(f"{confidence_badge} **Recommendation #{i}** - Strike ${rec.strike:.2f} ({rec.confidence.upper()} confidence)", expanded=(i==1)):
+                    action_icon = action_icons.get(rec.action_type, "📊")
+                    action_label = action_labels.get(rec.action_type, rec.action_type.upper())
+                    
+                    with st.expander(
+                        f"{confidence_badge} {action_icon} **{action_label}** - Strike ${rec.strike:.2f} ({rec.confidence.upper()})",
+                        expanded=(i<=2)
+                    ):
                         # Display recommendation details
                         col1, col2, col3 = st.columns(3)
                         
@@ -509,8 +537,9 @@ def main():
                         
                         with col2:
                             st.metric("Recommended Contracts", rec.recommended_contracts)
-                            st.metric("Expected Premium", f"${rec.expected_premium:.0f}")
-                            st.metric("% of Account", f"{rec.premium_pct*100:.3f}%")
+                            premium_label = "Net Credit" if rec.expected_premium > 0 else "Cost"
+                            st.metric(premium_label, f"${abs(rec.expected_premium):.0f}")
+                            st.metric("% of Account", f"{abs(rec.premium_pct)*100:.3f}%")
                         
                         with col3:
                             if rec.delta is not None:

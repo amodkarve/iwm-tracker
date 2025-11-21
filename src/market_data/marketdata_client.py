@@ -191,17 +191,26 @@ class MarketDataClient:
         strike_min = current_price * (1 - strike_range_pct)
         strike_max = current_price * (1 + strike_range_pct)
         
+        # Fetch options for next 1-5 days to handle weekends/holidays
         chain = self.get_options_chain(
             symbol=symbol,
             strike_min=strike_min,
             strike_max=strike_max,
             dte_min=1,
-            dte_max=1,
+            dte_max=5,
             option_type='put'
         )
         
         if chain.empty:
             return chain
+            
+        # Find the closest expiration date
+        # Ensure expiration column is datetime
+        chain['expiration'] = pd.to_datetime(chain['expiration'])
+        next_expiration = chain['expiration'].min()
+        
+        # Filter for only that expiration
+        chain = chain[chain['expiration'] == next_expiration]
         
         # Sort by strike (descending for puts)
         chain = chain.sort_values('strike', ascending=False)

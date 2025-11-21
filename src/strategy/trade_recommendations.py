@@ -11,11 +11,11 @@ from datetime import datetime, date
 from typing import Dict, List, Optional
 import logging
 
-from market_data import get_iwm_price, get_1dte_puts_near_money, get_data_source
-from indicators import calculate_instantaneous_trend, calculate_cycle_swing, get_trend_signal, get_momentum_signal
-from market_data.price_fetcher import get_hl2_series, get_price_series
-from strategy.premium_calculator import get_position_sizing_recommendation
-from strategy.rules import (
+from src.market_data import get_iwm_price, get_1dte_puts_near_money, get_data_source
+from src.indicators import calculate_instantaneous_trend, calculate_cycle_swing, get_trend_signal, get_momentum_signal
+from src.market_data.price_fetcher import get_hl2_series, get_price_series
+from src.strategy.premium_calculator import get_position_sizing_recommendation
+from src.strategy.rules import (
     TARGET_DAILY_PREMIUM_PCT,
     CLOSE_THRESHOLD,
     MIN_CONTRACTS,
@@ -49,7 +49,8 @@ class TradeRecommendation:
         volume: Optional[int] = None,
         open_interest: Optional[int] = None,
         reason: str = "",
-        confidence: str = "medium"
+        confidence: str = "medium",
+        action_type: str = "open_put"
     ):
         self.symbol = symbol
         self.option_symbol = option_symbol
@@ -69,6 +70,7 @@ class TradeRecommendation:
         self.open_interest = open_interest
         self.reason = reason
         self.confidence = confidence
+        self.action_type = action_type
     
     def to_dict(self) -> Dict:
         """Convert to dictionary for display"""
@@ -90,7 +92,8 @@ class TradeRecommendation:
             'volume': self.volume,
             'open_interest': self.open_interest,
             'reason': self.reason,
-            'confidence': self.confidence
+            'confidence': self.confidence,
+            'action_type': self.action_type
         }
 
 
@@ -391,10 +394,15 @@ def get_stock_replacement_recommendation(
     Action: Sell Stock, Buy DITM Call
     """
     # Check triggers
-    if trend_signal <= 0:
-        return None
-        
-    if capital_usage['buying_power_usage_pct'] < 0.75:
+    bp_usage = capital_usage['buying_power_usage_pct']
+    
+    # Tier 1: Critical Capital Usage (>90%) - Trigger regardless of trend
+    is_critical = bp_usage >= 0.90
+    
+    # Tier 2: High Capital Usage (>75%) - Trigger only if Bullish
+    is_high_efficiency = bp_usage >= 0.75 and trend_signal > 0
+    
+    if not (is_critical or is_high_efficiency):
         return None
         
     stock_positions = capital_usage.get('stock_positions', {})
@@ -409,7 +417,6 @@ def get_stock_replacement_recommendation(
     target_strike = iwm_price * 0.85
     
     from datetime import timedelta
-    expiration_date = date.today() + timedelta(days=1) # Short term replacement? 
     # Usually stock replacement is longer term (LEAPS), but sticking to short term context
     # Let's suggest 1 week out for better theta
     expiration_date = date.today() + timedelta(days=7)
@@ -417,6 +424,8 @@ def get_stock_replacement_recommendation(
     # Estimate price (Intrinsic value + time value)
     intrinsic_value = iwm_price - target_strike
     estimated_price = intrinsic_value + 0.50 # Small time value
+    
+    reason_prefix = "🚨 CRITICAL BP" if is_critical else "🔄 EFFICIENCY"
     
     return TradeRecommendation(
         symbol='IWM',
@@ -431,6 +440,6 @@ def get_stock_replacement_recommendation(
         recommended_contracts=1,
         expected_premium=-estimated_price * 100, # Cost
         premium_pct=0,
-        reason=f"🔄 STOCK REPLACEMENT: High Capital Usage ({capital_usage['buying_power_usage_pct']*100:.1f}%). Free up BP by replacing 100 shares.",
-        confidence="medium"
+        reason=f"{reason_prefix}: High Capital Usage ({bp_usage*100:.1f}%). Free up BP by replacing 100 shares.",
+        confidence="high" if is_critical else "medium"
     )

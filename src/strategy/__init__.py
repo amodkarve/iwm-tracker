@@ -16,6 +16,10 @@ from .trade_recommendations import (
     get_trade_recommendations,
     TradeRecommendation
 )
+from .recommendation_engine import (
+    get_all_recommendations,
+    RecommendationType
+)
 
 __all__ = [
     'calculate_daily_target',
@@ -28,7 +32,10 @@ __all__ = [
     'ROLL_PREMIUM_MAX',
     'PREFERRED_DTE',
     'get_trade_recommendations',
-    'TradeRecommendation'
+    'TradeRecommendation',
+    'get_all_recommendations',
+    'RecommendationType'
 ]
+
 
 
