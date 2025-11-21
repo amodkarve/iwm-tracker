@@ -9,7 +9,7 @@ services:
       - "${PORT:-8501}:8501"
     volumes:
       # Mount database to persist data
-      - ./wheel.db:/app/wheel.db
+      - ./data:/app/data
       # Mount Streamlit config and secrets
       - ./.streamlit:/app/.streamlit:ro
       # Mount source code for development (optional - remove in production)
@@ -23,6 +23,7 @@ services:
       # Get token from: https://dashboard.marketdata.app/
       # Trader plan ($75/month) recommended
       - MARKETDATA_API_TOKEN=${MARKETDATA_API_TOKEN:-}
+      - WHEEL_DB_PATH=/app/data/wheel.db
     env_file:
       - .env
     restart: unless-stopped

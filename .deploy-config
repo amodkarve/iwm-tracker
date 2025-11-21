@@ -1,0 +1,18 @@
+# Deployment Configuration
+# This file contains settings for deploying to the VPS
+
+# VPS connection details
+VPS_HOST="amod@178.156.200.64"
+VPS_DEPLOY_DIR="/home/amod/iwm-tracker"
+VPS_DATA_DIR="/home/amod/iwm-tracker/data"
+
+# Docker image settings
+IMAGE_NAME="iwm-tracker"
+IMAGE_TAG="latest"
+
+# Build settings
+PLATFORM="linux/amd64"
+DOCKERFILE="Dockerfile"
+
+# Backup settings
+BACKUP_RETENTION_DAYS=7
