@@ -10,8 +10,11 @@ export default function PerformanceMetrics({ accountSize }) {
     fetchPerformance()
   }, [accountSize])
 
+  const [error, setError] = useState(null)
+
   const fetchPerformance = async () => {
     try {
+      setError(null)
       const [perfRes, capitalRes] = await Promise.all([
         axios.get('/api/analytics/performance', {
           params: { account_value: accountSize, initial_value: accountSize },
@@ -26,6 +29,8 @@ export default function PerformanceMetrics({ accountSize }) {
       setLoading(false)
     } catch (error) {
       console.error('Error fetching performance:', error)
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to fetch performance data'
+      setError(errorMessage)
       setLoading(false)
     }
   }
@@ -34,8 +39,27 @@ export default function PerformanceMetrics({ accountSize }) {
     return <div>Loading performance metrics...</div>
   }
 
+  if (error) {
+    return (
+      <div>
+        <h2 className="text-xl font-bold mb-4">🎯 Performance Tracking</h2>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+          <div className="font-semibold mb-2">Error loading performance data</div>
+          <div className="text-sm">{error}</div>
+        </div>
+      </div>
+    )
+  }
+
   if (!performance) {
-    return <div>No performance data available</div>
+    return (
+      <div>
+        <h2 className="text-xl font-bold mb-4">🎯 Performance Tracking</h2>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">
+          No performance data available. Add some trades to see performance metrics.
+        </div>
+      </div>
+    )
   }
 
   const annualReturnPct = (performance.annualized_return * 100).toFixed(2)

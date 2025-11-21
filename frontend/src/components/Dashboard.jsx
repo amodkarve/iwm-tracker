@@ -7,6 +7,7 @@ import TradeForm from './TradeForm'
 import Recommendations from './Recommendations'
 import Analytics from './Analytics'
 import CostBasis from './CostBasis'
+import OpenPositions from './OpenPositions'
 
 export default function Dashboard() {
   const { username, logout } = useAuth()
@@ -87,6 +88,7 @@ export default function Dashboard() {
             </div>
             <MarketData />
             <PerformanceMetrics accountSize={accountSize} />
+            <OpenPositions />
           </div>
         )}
 

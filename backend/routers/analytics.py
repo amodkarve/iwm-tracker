@@ -1,7 +1,7 @@
 """
 Analytics router
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import sys
@@ -63,15 +63,50 @@ async def get_performance(
     current_user: str = Depends(get_current_user)
 ):
     """Get performance summary"""
-    if db_path:
-        db_instance = Database(db_path)
-    else:
-        db_instance = db
-    
-    trades = db_instance.list_trades()
-    perf = get_performance_summary(trades, account_value, initial_value)
-    
-    return PerformanceSummary(**perf)
+    try:
+        if db_path:
+            db_instance = Database(db_path)
+        else:
+            db_instance = db
+        
+        trades = db_instance.list_trades()
+        
+        # Handle empty trades case
+        if not trades:
+            return PerformanceSummary(
+                annualized_return=0.0,
+                total_premium=0.0,
+                win_rate=0.0,
+                avg_win=0.0,
+                avg_loss=0.0,
+                sharpe_ratio=None,
+                max_drawdown=None,
+                total_trades=0,
+                days_active=0,
+                on_track=False
+            )
+        
+        perf = get_performance_summary(trades, account_value, initial_value)
+        
+        # Handle error case
+        if 'error' in perf:
+            raise HTTPException(status_code=400, detail=perf['error'])
+        
+        # Map the returned dictionary to the PerformanceSummary model
+        return PerformanceSummary(
+            annualized_return=perf.get('annualized_return', 0.0),
+            total_premium=perf.get('total_premium', 0.0),
+            win_rate=perf.get('win_rate', 0.0),
+            avg_win=perf.get('avg_win', 0.0),
+            avg_loss=perf.get('avg_loss', 0.0),
+            sharpe_ratio=perf.get('sharpe_ratio'),
+            max_drawdown=perf.get('max_drawdown'),
+            total_trades=perf.get('total_trades', 0),
+            days_active=perf.get('days_active', 0),
+            on_track=perf.get('on_track', False)
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating performance: {str(e)}")
 
 
 @router.get("/cost-basis", response_model=List[CostBasisResponse])

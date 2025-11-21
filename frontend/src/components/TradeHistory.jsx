@@ -4,6 +4,7 @@ import axios from 'axios'
 export default function TradeHistory() {
   const [trades, setTrades] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     fetchTrades()
@@ -21,17 +22,37 @@ export default function TradeHistory() {
 
   const fetchTrades = async () => {
     try {
+      setError(null)
       const response = await axios.get('/api/trades/')
       setTrades(response.data)
       setLoading(false)
     } catch (error) {
       console.error('Error fetching trades:', error)
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to fetch trades'
+      setError(errorMessage)
       setLoading(false)
     }
   }
 
   if (loading) {
-    return <div>Loading trades...</div>
+    return (
+      <div className="bg-white rounded-lg border border-slate-200 p-6">
+        <h3 className="text-lg font-semibold mb-4">📋 Trade History</h3>
+        <div>Loading trades...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg border border-slate-200 p-6">
+        <h3 className="text-lg font-semibold mb-4">📋 Trade History</h3>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+          <div className="font-semibold mb-2">Error loading trades</div>
+          <div className="text-sm">{error}</div>
+        </div>
+      </div>
+    )
   }
 
   return (

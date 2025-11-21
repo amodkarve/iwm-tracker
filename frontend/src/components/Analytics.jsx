@@ -16,7 +16,6 @@ import {
 export default function Analytics() {
   const [monthlyPremium, setMonthlyPremium] = useState([])
   const [cumulativePremium, setCumulativePremium] = useState([])
-  const [openPositions, setOpenPositions] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -25,21 +24,30 @@ export default function Analytics() {
 
   const fetchAnalytics = async () => {
     try {
-      const [monthlyRes, cumulativeRes, positionsRes] = await Promise.all([
+      const [monthlyRes, cumulativeRes] = await Promise.all([
         axios.get('/api/analytics/monthly-premium'),
         axios.get('/api/analytics/cumulative-premium'),
-        axios.get('/api/analytics/open-positions'),
       ])
 
       setMonthlyPremium(monthlyRes.data)
       setCumulativePremium(cumulativeRes.data)
-      setOpenPositions(positionsRes.data)
       setLoading(false)
     } catch (error) {
       console.error('Error fetching analytics:', error)
       setLoading(false)
     }
   }
+
+  // Listen for trade added event to refresh
+  useEffect(() => {
+    const handleTradeAdded = () => {
+      fetchAnalytics()
+    }
+    window.addEventListener('tradeAdded', handleTradeAdded)
+    return () => {
+      window.removeEventListener('tradeAdded', handleTradeAdded)
+    }
+  }, [])
 
   if (loading) {
     return <div>Loading analytics...</div>
@@ -91,67 +99,6 @@ export default function Analytics() {
         </div>
       )}
 
-      {/* Open Positions */}
-      {openPositions.length > 0 ? (
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">⚠️ Open Option Obligations</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                    Symbol
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                    Type
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                    Strike
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                    Expiration
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                    Net Quantity
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-slate-200">
-                {openPositions.map((pos, index) => (
-                  <tr key={index} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                      {pos.symbol}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm">
-                      {pos.option_type.toUpperCase()}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm">
-                      ${pos.strike_price.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm">{pos.expiration_date}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          pos.net_quantity < 0
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-green-100 text-green-800'
-                        }`}
-                      >
-                        {pos.net_quantity > 0 ? '+' : ''}
-                        {pos.net_quantity.toFixed(0)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-green-800 text-center">
-          🎉 No Open Option Obligations - All positions are closed!
-        </div>
-      )}
     </div>
   )
 }

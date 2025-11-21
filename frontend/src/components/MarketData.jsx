@@ -6,6 +6,7 @@ export default function MarketData() {
   const [trend, setTrend] = useState(null)
   const [cycleSwing, setCycleSwing] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     fetchMarketData()
@@ -15,6 +16,7 @@ export default function MarketData() {
 
   const fetchMarketData = async () => {
     try {
+      setError(null)
       const [priceRes, trendRes, cycleRes] = await Promise.all([
         axios.get('/api/market-data/iwm-price'),
         axios.get('/api/market-data/indicators/trend'),
@@ -27,19 +29,36 @@ export default function MarketData() {
       setLoading(false)
     } catch (error) {
       console.error('Error fetching market data:', error)
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to fetch market data'
+      setError(errorMessage)
       setLoading(false)
     }
   }
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="metric-card animate-pulse">
-            <div className="h-4 bg-slate-200 rounded w-24 mx-auto mb-2"></div>
-            <div className="h-8 bg-slate-200 rounded w-32 mx-auto"></div>
-          </div>
-        ))}
+      <div>
+        <h2 className="text-xl font-bold mb-4">📊 Market Data & Indicators</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="metric-card animate-pulse">
+              <div className="h-4 bg-slate-200 rounded w-24 mx-auto mb-2"></div>
+              <div className="h-8 bg-slate-200 rounded w-32 mx-auto"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div>
+        <h2 className="text-xl font-bold mb-4">📊 Market Data & Indicators</h2>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+          <div className="font-semibold mb-2">Error loading market data</div>
+          <div className="text-sm">{error}</div>
+        </div>
       </div>
     )
   }

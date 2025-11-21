@@ -53,6 +53,9 @@ def calculate_capital_usage(
     """
     Calculate how much capital is currently deployed.
     
+    For covered calls: If you own stock and have short calls, the calls don't require
+    additional margin - only the stock capital is counted.
+    
     Args:
         trades: List of all trades
         account_value: Total account value (Net Liquidation Value)
@@ -70,7 +73,7 @@ def calculate_capital_usage(
     stock_positions = {}
     
     for trade in trades:
-        if trade.option_type == 'stock':
+        if trade.option_type == 'stock' or trade.option_type is None:
             current = stock_positions.get(trade.symbol, 0)
             if trade.side == 'buy':
                 stock_positions[trade.symbol] = current + trade.quantity
@@ -83,7 +86,7 @@ def calculate_capital_usage(
             stock_capital += shares * price
             
     # 2. Calculate CSP Capital (Cash Secured Puts)
-    # We need to find OPEN short puts
+    # We need to find OPEN short puts that are NOT covered by stock
     csp_capital = 0.0
     
     # Filter for puts that haven't expired
@@ -93,12 +96,12 @@ def calculate_capital_usage(
     # Group trades by option symbol to find net quantity
     option_positions = {}
     for trade in trades:
-        if trade.option_type == 'put':
+        if trade.option_type in ['put', 'call']:
             # Check expiration
             if trade.expiration_date and trade.expiration_date.date() >= today:
                 # Construct unique key for the option
                 key = f"{trade.symbol}_{trade.expiration_date}_{trade.strike_price}_{trade.option_type}"
-                current = option_positions.get(key, {'qty': 0, 'strike': trade.strike_price})
+                current = option_positions.get(key, {'qty': 0, 'strike': trade.strike_price, 'type': trade.option_type})
                 
                 if trade.side == 'sell':
                     current['qty'] -= trade.quantity # Short
@@ -107,13 +110,31 @@ def calculate_capital_usage(
                 
                 option_positions[key] = current
 
+    # Calculate capital for short puts (CSPs)
+    # For short calls: In a cash account, short calls must be covered by stock
+    # Covered calls don't require additional margin beyond the stock capital
+    # (The stock capital already accounts for the cash required to hold the shares)
     for key, pos in option_positions.items():
-        # If we are net short (qty < 0)
-        if pos['qty'] < 0:
-            # Capital reserved = Strike * 100 * |Contracts|
+        if pos['type'] == 'put' and pos['qty'] < 0:
+            # Short puts require cash = Strike * 100 * |Contracts|
             reserved = pos['strike'] * 100 * abs(pos['qty'])
             csp_capital += reserved
+        elif pos['type'] == 'call' and pos['qty'] < 0:
+            # Short calls in cash account: must be covered by stock
+            # Extract symbol from key (format: symbol_expiration_strike_type)
+            symbol = key.split('_')[0]
+            shares_owned = stock_positions.get(symbol, 0)
+            contracts_short = abs(pos['qty'])
+            shares_needed = contracts_short * 100
+            
+            # In a cash account, all short calls must be covered by stock
+            # Covered calls don't require additional margin beyond the stock
+            # The stock capital already accounts for the cash required
+            # No additional capital calculation needed for covered calls
 
+    # Total deployed: stock capital + cash secured puts
+    # Note: Covered calls don't require additional margin beyond the stock
+    # (Stock capital already includes the cash required to hold the shares)
     total_deployed = stock_capital + csp_capital
     usage_pct = (total_deployed / account_value) if account_value > 0 else 0
     

@@ -1,11 +1,14 @@
 """
 FastAPI backend for IWM Tracker
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.security import HTTPBearer
 import os
 import sys
+import traceback
 
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -17,6 +20,24 @@ app = FastAPI(
     description="API for IWM Put Selling Strategy Tracker",
     version="1.0.0"
 )
+
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Handle all unhandled exceptions"""
+    error_detail = str(exc)
+    error_traceback = traceback.format_exc()
+    
+    # Log the full traceback (in production, use proper logging)
+    print(f"Unhandled exception: {error_traceback}")
+    
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": error_detail,
+            "type": type(exc).__name__,
+        }
+    )
 
 # CORS middleware
 app.add_middleware(
