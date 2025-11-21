@@ -6,10 +6,6 @@ export default function Recommendations({ accountSize }) {
   const [recommendations, setRecommendations] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchRecommendations()
-  }, [accountSize])
-
   const fetchRecommendations = async () => {
     try {
       const response = await axios.get('/api/recommendations/all', {
@@ -22,6 +18,20 @@ export default function Recommendations({ accountSize }) {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchRecommendations()
+    
+    // Listen for trade added/closed events to refresh
+    const handleTradeAdded = () => {
+      fetchRecommendations()
+    }
+    window.addEventListener('tradeAdded', handleTradeAdded)
+    
+    return () => {
+      window.removeEventListener('tradeAdded', handleTradeAdded)
+    }
+  }, [accountSize])
 
   if (loading) {
     return <div>Loading recommendations...</div>

@@ -18,10 +18,6 @@ export default function Analytics() {
   const [cumulativePremium, setCumulativePremium] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchAnalytics()
-  }, [])
-
   const fetchAnalytics = async () => {
     try {
       const [monthlyRes, cumulativeRes] = await Promise.all([
@@ -38,12 +34,15 @@ export default function Analytics() {
     }
   }
 
-  // Listen for trade added event to refresh
   useEffect(() => {
+    fetchAnalytics()
+    
+    // Listen for trade added event to refresh
     const handleTradeAdded = () => {
       fetchAnalytics()
     }
     window.addEventListener('tradeAdded', handleTradeAdded)
+    
     return () => {
       window.removeEventListener('tradeAdded', handleTradeAdded)
     }

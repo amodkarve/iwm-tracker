@@ -5,10 +5,6 @@ export default function CostBasis() {
   const [costBasis, setCostBasis] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchCostBasis()
-  }, [])
-
   const fetchCostBasis = async () => {
     try {
       const response = await axios.get('/api/analytics/cost-basis')
@@ -19,6 +15,20 @@ export default function CostBasis() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchCostBasis()
+    
+    // Listen for trade added/closed events to refresh
+    const handleTradeAdded = () => {
+      fetchCostBasis()
+    }
+    window.addEventListener('tradeAdded', handleTradeAdded)
+    
+    return () => {
+      window.removeEventListener('tradeAdded', handleTradeAdded)
+    }
+  }, [])
 
   if (loading) {
     return <div>Loading cost basis...</div>

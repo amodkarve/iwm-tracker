@@ -5,11 +5,6 @@ export default function PerformanceMetrics({ accountSize }) {
   const [performance, setPerformance] = useState(null)
   const [capitalUsage, setCapitalUsage] = useState(null)
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchPerformance()
-  }, [accountSize])
-
   const [error, setError] = useState(null)
 
   const fetchPerformance = async () => {
@@ -34,6 +29,20 @@ export default function PerformanceMetrics({ accountSize }) {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchPerformance()
+    
+    // Listen for trade added/closed events to refresh
+    const handleTradeAdded = () => {
+      fetchPerformance()
+    }
+    window.addEventListener('tradeAdded', handleTradeAdded)
+    
+    return () => {
+      window.removeEventListener('tradeAdded', handleTradeAdded)
+    }
+  }, [accountSize])
 
   if (loading) {
     return <div>Loading performance metrics...</div>

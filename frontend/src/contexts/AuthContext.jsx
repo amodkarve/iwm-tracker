@@ -13,6 +13,26 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null)
   const [username, setUsername] = useState(null)
 
+  const logout = async (currentToken = null) => {
+    try {
+      const tokenToUse = currentToken || token
+      if (tokenToUse) {
+        await axios.post('/api/auth/logout', {}, {
+          headers: { Authorization: `Bearer ${tokenToUse}` },
+        })
+      }
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      localStorage.removeItem('token')
+      localStorage.removeItem('username')
+      setToken(null)
+      setUsername(null)
+      setIsAuthenticated(false)
+      delete axios.defaults.headers.common['Authorization']
+    }
+  }
+
   useEffect(() => {
     // Check for stored token
     const storedToken = localStorage.getItem('token')
@@ -26,7 +46,42 @@ export function AuthProvider({ children }) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`
     }
     
+    // Add axios interceptor to handle token expiration
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 401) {
+          // Token expired or invalid - logout
+          const currentToken = localStorage.getItem('token')
+          localStorage.removeItem('token')
+          localStorage.removeItem('username')
+          setToken(null)
+          setUsername(null)
+          setIsAuthenticated(false)
+          delete axios.defaults.headers.common['Authorization']
+          
+          // Try to logout on server (but don't wait for it)
+          if (currentToken) {
+            axios.post('/api/auth/logout', {}, {
+              headers: { Authorization: `Bearer ${currentToken}` },
+            }).catch(() => {}) // Ignore errors
+          }
+          
+          // Redirect to login if not already there
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login'
+          }
+        }
+        return Promise.reject(error)
+      }
+    )
+    
     setLoading(false)
+    
+    // Cleanup interceptor on unmount
+    return () => {
+      axios.interceptors.response.eject(interceptor)
+    }
   }, [])
 
   const login = async (username, password) => {
@@ -54,23 +109,8 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const logout = async () => {
-    try {
-      if (token) {
-        await axios.post('/api/auth/logout', {}, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-      }
-    } catch (error) {
-      console.error('Logout error:', error)
-    } finally {
-      localStorage.removeItem('token')
-      localStorage.removeItem('username')
-      setToken(null)
-      setUsername(null)
-      setIsAuthenticated(false)
-      delete axios.defaults.headers.common['Authorization']
-    }
+  const handleLogout = async () => {
+    await logout()
   }
 
   const value = {
@@ -79,7 +119,7 @@ export function AuthProvider({ children }) {
     token,
     username,
     login,
-    logout,
+    logout: handleLogout,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
