@@ -1,17 +1,18 @@
 version: '3.8'
 
 services:
-  iwm-tracker:
-    image: iwm-tracker:latest
-    container_name: iwm-tracker
+  backend:
+    image: iwm-tracker-backend:latest
+    container_name: iwm-tracker-backend
     restart: unless-stopped
     ports:
       # Only expose to localhost (WordOps will reverse proxy)
-      - "127.0.0.1:8501:8501"
+      # Using port 8001 to avoid conflict with other services (8000 is in use)
+      - "127.0.0.1:8001:8000"
     volumes:
       # Persistent database
       - ./data:/app/data
-      # Streamlit configuration (read-only)
+      # Streamlit configuration (read-only) - kept for compatibility
       - ./.streamlit:/app/.streamlit:ro
     environment:
       - PYTHONUNBUFFERED=1
@@ -21,11 +22,24 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8501/_stcore/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+    networks:
+      - iwm-network
+
+  frontend:
+    image: iwm-tracker-frontend:latest
+    container_name: iwm-tracker-frontend
+    restart: unless-stopped
+    ports:
+      # Only expose to localhost (WordOps will reverse proxy)
+      # Using port 3001 to avoid conflict with other services
+      - "127.0.0.1:3001:80"
+    depends_on:
+      - backend
     networks:
       - iwm-network
 
