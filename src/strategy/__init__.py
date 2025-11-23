@@ -20,6 +20,24 @@ from .recommendation_engine import (
     get_all_recommendations,
     RecommendationType
 )
+from .fuzzy_engine import (
+    FuzzySet,
+    FuzzyVar,
+    defuzzify_centroid,
+    fuzzy_and,
+    fuzzy_or,
+    fuzzy_not
+)
+from .fuzzy_strategy import FuzzyStrategy
+from .fuzzy_inputs import (
+    get_fuzzy_inputs,
+    calculate_portfolio_metrics,
+    calculate_assigned_share_metrics,
+    normalize_vix,
+    calculate_trend_normalized,
+    calculate_cycle_normalized
+)
+from .fuzzy_recommendations import FuzzyRecommendationEngine
 
 __all__ = [
     'calculate_daily_target',
@@ -34,7 +52,21 @@ __all__ = [
     'get_trade_recommendations',
     'TradeRecommendation',
     'get_all_recommendations',
-    'RecommendationType'
+    'RecommendationType',
+    'FuzzySet',
+    'FuzzyVar',
+    'defuzzify_centroid',
+    'fuzzy_and',
+    'fuzzy_or',
+    'fuzzy_not',
+    'FuzzyStrategy',
+    'get_fuzzy_inputs',
+    'calculate_portfolio_metrics',
+    'calculate_assigned_share_metrics',
+    'normalize_vix',
+    'calculate_trend_normalized',
+    'calculate_cycle_normalized',
+    'FuzzyRecommendationEngine'
 ]
 
 
