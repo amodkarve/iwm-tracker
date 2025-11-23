@@ -45,3 +45,6 @@ wheel.db
 # Temporary files
 *.tmp
 .cache/
+
+# Backtest results (output files)
+backtest_results/
