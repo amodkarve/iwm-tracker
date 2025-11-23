@@ -46,8 +46,8 @@ git commit -m "$COMMIT_MESSAGE"
 echo "✅ Changes committed"
 echo ""
 
-# Get current branch
-CURRENT_BRANCH=$(git branch --show-current)
+# Get current branch (compatible with older Git versions)
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 echo "🌿 Current branch: $CURRENT_BRANCH"
 echo ""
 
