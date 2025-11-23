@@ -14,12 +14,42 @@ import traceback
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from backend.routers import auth, trades, market_data, analytics, recommendations, config
+from wheeltracker.db import db
 
 app = FastAPI(
     title="IWM Tracker API",
     description="API for IWM Put Selling Strategy Tracker",
     version="1.0.0"
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    Initialize database and run migrations on application startup.
+    This ensures all tables (including new ones) are created automatically.
+    
+    The Database class automatically creates missing tables using CREATE TABLE IF NOT EXISTS,
+    so this migration is safe and idempotent - it won't delete or modify existing data.
+    """
+    try:
+        # The global db instance is created at module import time, which calls _init_db()
+        # This ensures all tables (trades, cashflows, config) are created if they don't exist
+        # Accessing db properties ensures initialization is complete
+        db_path = db.db_path
+        
+        # Explicitly ensure tables are created (idempotent operation)
+        # This is safe because CREATE TABLE IF NOT EXISTS won't modify existing tables
+        conn = db._get_connection()
+        db._create_tables(conn.cursor())
+        conn.commit()
+        conn.close()
+        
+        print(f"[INFO] Database initialized: {db_path}")
+        print("[INFO] Database migrations completed (all tables verified/created)")
+    except Exception as e:
+        print(f"[ERROR] Database initialization failed: {e}")
+        # Don't raise - let the app start and handle errors at request time
 
 # Global exception handler
 @app.exception_handler(Exception)

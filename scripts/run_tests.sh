@@ -30,7 +30,12 @@ echo "🚀 Running tests..."
 echo ""
 
 # Use docker-compose to run tests
-docker-compose -f docker-compose.test.yml run --rm test "$@"
+# If arguments are provided, pass them to pytest, otherwise use default
+if [ $# -eq 0 ]; then
+    docker-compose -f docker-compose.test.yml run --rm test pytest -v
+else
+    docker-compose -f docker-compose.test.yml run --rm test pytest "$@"
+fi
 
 echo ""
 echo "✅ Tests completed"

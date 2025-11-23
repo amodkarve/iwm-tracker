@@ -56,6 +56,15 @@ class Database:
                 description TEXT
             )
         """)
+        
+        # Create config table for portfolio settings
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS config (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
     
     def _init_db(self):
         """Initialize database and create tables if they don't exist."""
@@ -128,6 +137,39 @@ class Database:
             conn.close()
         
         return trades
+    
+    def get_config(self, key: str, default: str = None) -> str:
+        """Get a configuration value."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT value FROM config WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        
+        # Close connection for file-based databases
+        if self.db_path != ":memory:":
+            conn.close()
+        
+        return row[0] if row else default
+    
+    def set_config(self, key: str, value: str) -> None:
+        """Set a configuration value."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        from datetime import datetime
+        now = datetime.now().isoformat()
+        
+        cursor.execute("""
+            INSERT OR REPLACE INTO config (key, value, updated_at)
+            VALUES (?, ?, ?)
+        """, (key, value, now))
+        
+        conn.commit()
+        
+        # Close connection for file-based databases
+        if self.db_path != ":memory:":
+            conn.close()
     
     def close(self):
         """Close the database connection."""

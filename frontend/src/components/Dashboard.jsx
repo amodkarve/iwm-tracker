@@ -10,6 +10,8 @@ import Analytics from './Analytics'
 import CostBasis from './CostBasis'
 import OpenPositions from './OpenPositions'
 import DatabaseSwitcher from './DatabaseSwitcher'
+import PortfolioNav from './PortfolioNav'
+import PortfolioConfig from './PortfolioConfig'
 
 export default function Dashboard() {
   const { username, logout } = useAuth()
@@ -76,19 +78,23 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
-            <div className="flex justify-end items-center space-x-4 mb-4">
-              <label className="text-sm font-medium text-slate-700">
-                Account Size ($):
-              </label>
-              <input
-                type="number"
-                value={accountSize}
-                onChange={(e) => setAccountSize(parseFloat(e.target.value))}
-                className="input-field w-40"
-                min="1000"
-                step="10000"
-              />
+            <div className="flex justify-between items-center mb-4">
+              <PortfolioConfig onUpdate={() => {}} />
+              <div className="flex items-center space-x-4">
+                <label className="text-sm font-medium text-slate-700">
+                  Account Size ($):
+                </label>
+                <input
+                  type="number"
+                  value={accountSize}
+                  onChange={(e) => setAccountSize(parseFloat(e.target.value))}
+                  className="input-field w-40"
+                  min="1000"
+                  step="10000"
+                />
+              </div>
             </div>
+            <PortfolioNav />
             <MarketData />
             <PerformanceMetrics accountSize={accountSize} />
             <OpenPositions />

@@ -18,6 +18,7 @@ from wheeltracker.analytics import (
     get_open_option_positions_for_closing,
 )
 from wheeltracker.calculations import cost_basis
+from wheeltracker.portfolio import calculate_nav
 from analytics.performance import get_performance_summary
 from strategy.position_manager import calculate_capital_usage, get_current_positions
 from market_data import get_iwm_price
@@ -229,4 +230,43 @@ async def get_open_positions(
     obligations_df["expiration_date"] = obligations_df["expiration_date"].dt.strftime("%Y-%m-%d")
     
     return obligations_df.to_dict(orient="records")
+
+
+class PortfolioNavResponse(BaseModel):
+    nav: float
+    starting_value: float
+    open_pnl: float
+    closed_pnl: float
+
+
+@router.get("/portfolio-nav", response_model=PortfolioNavResponse)
+async def get_portfolio_nav(
+    db_path: Optional[str] = None,
+    current_user: str = Depends(get_current_user)
+):
+    """Get portfolio NAV (Net Asset Value)"""
+    if db_path:
+        db_instance = Database(db_path)
+    else:
+        db_instance = db
+    
+    # Get starting portfolio value from config
+    default_value = 1000000.0
+    value_str = db_instance.get_config('starting_portfolio_value', str(default_value))
+    try:
+        starting_value = float(value_str)
+    except (ValueError, TypeError):
+        starting_value = default_value
+    
+    # Get all trades
+    trades = db_instance.list_trades()
+    
+    # Get current prices
+    iwm_price = get_iwm_price() or 0.0
+    current_prices = {'IWM': iwm_price}
+    
+    # Calculate NAV
+    nav_data = calculate_nav(starting_value, trades, current_prices)
+    
+    return PortfolioNavResponse(**nav_data)
 
