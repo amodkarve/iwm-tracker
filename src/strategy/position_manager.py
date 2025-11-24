@@ -8,7 +8,7 @@ Handles logic for:
 """
 from typing import List, Dict, Optional
 import pandas as pd
-from wheeltracker.models import Trade
+from src.wheeltracker.models import Trade
 
 def get_current_positions(trades: List[Trade]) -> Dict:
     """

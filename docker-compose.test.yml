@@ -7,6 +7,7 @@ services:
       # Mount source code and tests for live updates
       - ./src:/app/src
       - ./tests:/app/tests
+      - ./scripts:/app/scripts
       - ./conftest.py:/app/conftest.py
       - ./app_enhanced.py:/app/app_enhanced.py
       - ./app.py:/app/app.py

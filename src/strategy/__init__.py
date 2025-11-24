@@ -38,6 +38,17 @@ from .fuzzy_inputs import (
     calculate_cycle_normalized
 )
 from .fuzzy_recommendations import FuzzyRecommendationEngine
+from .fuzzy_backtest import (
+    FuzzyBacktestEngine,
+    FuzzyBacktestParams,
+    PortfolioState,
+    OptionPosition,
+    BacktestMetrics
+)
+from .fuzzy_optimizer import (
+    FuzzyOptimizer,
+    OptimizationResult
+)
 
 __all__ = [
     'calculate_daily_target',
@@ -66,7 +77,14 @@ __all__ = [
     'normalize_vix',
     'calculate_trend_normalized',
     'calculate_cycle_normalized',
-    'FuzzyRecommendationEngine'
+    'FuzzyRecommendationEngine',
+    'FuzzyBacktestEngine',
+    'FuzzyBacktestParams',
+    'PortfolioState',
+    'OptionPosition',
+    'BacktestMetrics',
+    'FuzzyOptimizer',
+    'OptimizationResult'
 ]
 
 

@@ -8,6 +8,12 @@ from .price_fetcher import (
     get_1dte_puts_near_money,
     get_data_source
 )
+from .historical_data import (
+    get_spx_history,
+    get_spy_history,
+    get_vix_history,
+    get_combined_market_data
+)
 
 __all__ = [
     'get_iwm_price',
@@ -16,7 +22,11 @@ __all__ = [
     'get_hl2_series',
     'get_options_chain',
     'get_1dte_puts_near_money',
-    'get_data_source'
+    'get_data_source',
+    'get_spx_history',
+    'get_spy_history',
+    'get_vix_history',
+    'get_combined_market_data'
 ]
 
 
