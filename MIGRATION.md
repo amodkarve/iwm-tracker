@@ -41,16 +41,7 @@ iwm-tracker/
 
 ### Development Mode
 
-**Option 1: Using scripts**
-```bash
-# Terminal 1: Start backend
-./scripts/run_backend.sh
-
-# Terminal 2: Start frontend
-./scripts/run_frontend.sh
-```
-
-**Option 2: Using Docker Compose**
+**Using Docker Compose**
 ```bash
 docker-compose -f docker-compose.dev.yml up
 ```

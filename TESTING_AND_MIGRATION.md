@@ -6,16 +6,17 @@
 
 ```bash
 # Run all tests
-./scripts/run_tests.sh
+docker-compose -f docker-compose.test.yml run --rm test pytest -v
 
 # Run specific test files
-./scripts/run_tests.sh tests/test_portfolio.py tests/test_config_db.py -v
+docker-compose -f docker-compose.test.yml run --rm test pytest tests/test_portfolio.py tests/test_config_db.py -v
 
 # Rebuild and run tests
-./scripts/run_tests.sh --build tests/test_portfolio.py -v
+docker-compose -f docker-compose.test.yml build
+docker-compose -f docker-compose.test.yml run --rm test pytest tests/test_portfolio.py -v
 ```
 
-### Manual Docker Commands
+### Docker Commands
 
 ```bash
 # Build test image
@@ -158,7 +159,7 @@ The migration script handles Windows encoding automatically. If you see encoding
 
 ## Summary
 
-- ✅ **Tests**: Run with `./scripts/run_tests.sh` or Docker commands
+- ✅ **Tests**: Run with Docker commands (see Quick Start above)
 - ✅ **Migration**: Happens automatically on application startup
 - ✅ **New DBs**: Automatically get config table (no migration needed)
 - ✅ **Existing DBs**: Config table created automatically on first startup after update

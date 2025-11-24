@@ -11,8 +11,7 @@ The easiest way to run the IWM Tracker is using Docker Compose:
 ### Start the App
 
 ```bash
-cd /Users/amod/antigravity/iwm-tracker
-./start.sh
+docker-compose up -d
 ```
 
 That's it! The app will be available at **http://localhost:8501**
@@ -21,9 +20,6 @@ That's it! The app will be available at **http://localhost:8501**
 
 ```bash
 # Start the app
-./start.sh
-
-# Or manually:
 docker-compose up -d
 
 # View logs

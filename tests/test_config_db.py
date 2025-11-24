@@ -81,3 +81,4 @@ class TestConfigDatabase:
         # Verify it's stored as string
         assert isinstance(value, str)
 
+

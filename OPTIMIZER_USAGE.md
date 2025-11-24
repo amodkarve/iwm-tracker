@@ -29,18 +29,6 @@ OPTIMIZER_OUTPUT=/app/results.json OPTIMIZER_ITERATIONS=100 \
   docker-compose -f docker-compose.test.yml run --rm test python scripts/run_optimizer.py
 ```
 
-### Using the Shell Script
-
-Alternatively, use the provided shell script:
-
-```bash
-# Basic usage
-OPTIMIZER_ITERATIONS=100 ./scripts/run_optimizer.sh
-
-# With output file
-OPTIMIZER_OUTPUT=results.json OPTIMIZER_ITERATIONS=100 ./scripts/run_optimizer.sh
-```
-
 ## Configuration
 
 ### Time Periods
